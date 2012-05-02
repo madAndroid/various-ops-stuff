@@ -1,0 +1,159 @@
+#! /bin/sh
+#
+#	/etc/rc.d/init.d/logstash
+#	Starts Logstash as a daemon
+#
+# chkconfig: 2345 20 80
+# description: Starts Logstash as a daemon
+# pidfile: /var/run/logstash-agent.pid
+
+### BEGIN INIT INFO
+# Provides: logstash
+# Required-Start: $local_fs $remote_fs
+# Required-Stop: $local_fs $remote_fs
+# Default-Start: 2 3 4 5
+# Default-Stop: S 0 1 6
+# Short-Description: Logstash
+# Description: Starts Logstash as a daemon.
+# Author: christian.paredes@sbri.org, modified by https://github.com/paul-at
+
+### END INIT INFO
+
+#set -x
+#set -e
+
+. /etc/init.d/functions
+
+MODE="scribe"
+NAME="logstash-$MODE"
+DESC="Logstash Daemon"
+LS_USER="logstash"
+LS_HOME="/opt/logstash"
+LS_CONF="/etc/logstash/$NAME.conf"
+LS_BIN="$LS_HOME/lib/logstash/runner.rb"
+LS_LOG="$LS_HOME/log/$NAME.log"
+NICE_BIN=`which nice`
+RUBY_BIN=`which ruby`
+SUBSYS_LOCK="/var/lock/subsys/logstash"
+PID_FILE="$LS_HOME/run/logstash.pid"
+DEFAULTS="/etc/sysconfig/$NAME"
+ID_BIN=`which id`
+
+if [ -f $DEFAULTS ]; then
+    . $DEFAULTS
+fi
+
+# Exit if the package is not installed
+if [ ! -f "$LS_BIN" ]; then
+    echo "Couldn't find $LS_BIN"
+    exit 99
+fi
+
+# Make sure log directory & log file exists
+if [ ! -f $LS_LOG ]; then
+    su $LS_USER -c "mkdir -p $LS_HOME/log"
+    su $LS_USER -c "touch $LS_LOG"
+fi
+
+$ID_BIN $LS_USER 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "User $LS_USER doesn't exist!! exiting.."
+    exit 1
+fi
+
+start () {
+    cd $LS_HOME
+    echo "Starting $DESC: "
+
+    PID=`ps u --user ${LS_USER} | egrep -v bash | grep ${LS_USER} | awk '{print $2}'`
+
+    if [ $PID ]; then
+        failure
+        echo "$DESC is already running!! - with PID: $PID"
+        exit 1
+    fi
+    ## start daemon, with nice, as logstash user
+    daemon --user $LS_USER "$NICE_BIN ruby $LS_BIN agent $EXTRA_OPTS --config $LS_CONF --log $LS_LOG" >/dev/null 2>&1 &
+    RETVAL=$?
+    
+    sleep 1
+    PID=`ps u --user ${LS_USER} | egrep -v bash | grep ${LS_USER} | awk '{print $2}'`
+    su - $LS_USER -c "echo $PID > $PID_FILE"
+
+    if [ $RETVAL -eq 0 ] && [ $PID ]; then 
+        success
+        echo "Started $DESC successfully"
+        touch $SUBSYS_LOCK
+    else
+        failure
+        echo "failed to start $DESC!!"
+        exit 1
+    fi
+
+    return $RETVAL
+}
+
+stop () {
+    echo "Shutting down $DESC:"
+    PID=`ps u --user ${LS_USER} | egrep -v bash | grep ${LS_USER} | awk '{print $2}'`
+    if [ $PID ]; then
+        kill -9 $PID
+    else
+        failure
+        echo "$DESC is not running"
+        RETVAL=1
+        return $RETVAL
+    fi
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then 
+        success 
+        echo "Shut down $DESC with PID: $PID"
+        rm -f $SUBSYS_LOCK
+    else
+        failure
+        echo "Failed to stop $DESC!!"
+        exit 1
+    fi
+
+    return $RETVAL
+}
+
+status () {
+    PID=`ps u --user ${LS_USER} | egrep -v bash | grep ${LS_USER} | awk '{print $2}'`
+    if [ $PID ]; then
+        success
+        echo "$DESC is running, with PID: $PID"
+    else
+        failure
+        echo "$DESC is not running!!"
+    fi
+}
+
+case $1 in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	reload)
+		stop
+                sleep 1
+		start
+		;;
+	restart)
+		stop
+                sleep 1
+		start
+		;;
+	status)
+		status && exit 0 || exit $?
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload|status}"
+		exit 1
+		;;
+esac
+
+exit $RETVAL
+

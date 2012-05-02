@@ -1,0 +1,3 @@
+# Configuration file for the scribe service.
+
+SCRIBED_CONFIG=/etc/scribed/graylog2.conf
