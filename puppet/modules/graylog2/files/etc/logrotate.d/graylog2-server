@@ -1,0 +1,8 @@
+/opt/graylog2-server/log/*.log {
+        daily
+        rotate 14
+        copytruncate
+        compress
+        missingok
+        notifempty
+}

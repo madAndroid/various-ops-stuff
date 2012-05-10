@@ -1,0 +1,14 @@
+/opt/scribe/log/*.log {
+        daily
+        rotate 14
+        copytruncate
+        compress
+        missingok
+        notifempty
+        create 644 scribe scribe
+        postrotate
+            if [ -f /tmp/scribed.pid ]; then
+                    /etc/init.d/scribed restart > /dev/null
+            fi  
+        endscript
+}

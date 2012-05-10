@@ -1,0 +1,4 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+RBENV_ROOT=/opt/logstash/rbenv
+PATH="$RBENV_ROOT/shims:$RBENV_ROOT/bin:$PATH"
+EXTRA_OPTS=""

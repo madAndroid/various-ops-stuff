@@ -1,0 +1,2 @@
+## add -d in here to get debug output to log file ($GL2_HOME/log/graylog2.log)
+EXTRA_OPTS="-d"

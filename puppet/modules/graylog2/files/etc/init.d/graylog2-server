@@ -1,0 +1,154 @@
+#!/bin/sh
+#
+# graylog2-server:   graylog2 message collector
+#
+# chkconfig: - 98 02
+# description:  This daemon listens for syslog and GELF messages and stores them in elasticsearch
+#
+
+. /etc/init.d/functions
+
+#set -x
+
+CMD=$1
+NOHUP=`which nohup`
+NICE_BIN=`which nice`
+ID_BIN=`which id`
+
+DESC="graylog2-server"
+GL2_NAME="graylog2-server"
+GL2_USER="graylog2"
+GL2_HOME=/opt/graylog2-server
+GL2_CONF="$GL2_HOME/conf/graylog2.conf"
+JAVA_HOME=/usr
+JAVA_CMD=$JAVA_HOME/bin/java
+JAR_NAME="$GL2_NAME.jar"
+JAR_FILE="$GL2_HOME/$JAR_NAME"
+DEFAULTS="/etc/sysconfig/$GL2_NAME"
+GL2_LOG="$GL2_HOME/log/$GL2_NAME.log"
+PID_FILE="$GL2_HOME/run/$GL2_NAME.pid"
+SUBSYS_LOCK="/var/lock/subsys/$GL2_NAME"
+
+if [ -f $DEFAULTS ]; then
+    . $DEFAULTS
+fi
+
+# Exit if the package is not installed
+if [ ! -f "$JAR_FILE" ]; then
+    echo "Couldn't find $JAR_FILE"
+    exit 99
+fi
+
+$ID_BIN $GL2_USER 2>&1 >/dev/null
+if [ $? -ne 0 ]; then
+    echo "User $GL2_USER doesn't exist!! exiting.."
+    exit 1
+fi
+
+# Make sure log directory & log file exists
+if [ ! -f $GL2_LOG ]; then
+    su $GL2_USER -c "mkdir -p $GL2_HOME/log"
+    su $GL2_USER -c "touch $GL2_LOG"
+fi
+
+# Make sure config file exists
+if [ ! -f $GL2_CONF ]; then
+    echo "Missing config file: $GL2_CONF!! exiting.."
+    exit 1
+fi
+
+start() {
+    echo "Starting $DESC ..."
+
+    PID=`ps u --user ${GL2_USER} | egrep -v bash | egrep -v "web-interface" | grep ${GL2_USER} | awk '{print $2}'`
+
+    if [ $PID ]; then
+        failure
+        echo "$DESC is already running!! - with PID: $PID"
+        exit 1
+    fi
+
+    daemon --user $GL2_USER $NICE_BIN "$NOHUP $JAVA_CMD -jar $GL2_HOME/$JAR_NAME -f $GL2_CONF -p $PID_FILE $EXTRA_OPTS > $GL2_LOG 2>&1 &"
+
+    RETVAL=$?
+    PID=`ps u --user ${GL2_USER} | egrep -v bash | egrep -v "web-interface" | grep ${GL2_USER} | awk '{print $2}'`
+    su - $GL2_USER -c "echo $PID > $PID_FILE"
+
+    if [ $RETVAL -eq 0 ] && [ $PID ]; then 
+        success
+        echo "Started $DESC successfully"
+        touch $SUBSYS_LOCK
+    else
+        failure
+        echo "failed to start $DESC!!"
+        exit 1
+    fi
+
+    return $RETVAL
+
+}
+
+stop() {
+    echo "Shutting down $DESC:"
+    PID=`ps u --user ${GL2_USER} | egrep -v bash | egrep -v "web-interface" | grep ${GL2_USER} | awk '{print $2}'`
+    if [ $PID ]; then
+        kill -9 $PID 2>&1 > /dev/null
+    else
+        failure
+        echo "$DESC is not running"
+        RETVAL=1
+        return $RETVAL
+    fi
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then 
+        success 
+        echo "Shut down $DESC with PID: $PID"
+        rm -f $SUBSYS_LOCK
+    else
+        failure
+        echo "Failed to stop $DESC!!"
+        exit 1
+    fi
+
+    return $RETVAL
+
+}
+
+status () {
+    PID=`ps u --user ${GL2_USER} | egrep -v bash | egrep -v "web-interface" | grep ${GL2_USER} | awk '{print $2}'`
+    if [ $PID ]; then
+        success
+        echo "$DESC is running, with PID: $PID"
+    else
+        failure
+        echo "$DESC is not running!!"
+    fi
+}
+
+case $1 in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	reload)
+		stop
+                sleep 1
+		start
+		;;
+	restart)
+		stop
+                sleep 1
+		start
+		;;
+	status)
+		status && exit 0 || exit $?
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload|status}"
+		exit 1
+		;;
+esac
+exit $RETVAL
+
