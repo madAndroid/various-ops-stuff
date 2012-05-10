@@ -1,3 +1,4 @@
 # Configuration file for the scribe service.
 
-SCRIBED_CONFIG=/etc/scribed/master.conf
+SCRIBED_CONFIG=/etc/scribed/<%= scribe_role %>.conf
+SCRIBED_LOG=<%= log_path %>/<%= scribe_role %>.log

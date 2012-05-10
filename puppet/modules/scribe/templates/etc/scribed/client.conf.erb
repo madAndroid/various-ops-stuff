@@ -15,41 +15,30 @@
 ## See accompanying file LICENSE or visit the Scribe site at:
 ## http://developers.facebook.com/scribe/ 
 
-
-##
-## Sample Scribe configuration
-##
-
-# This file configures Scribe to listen for messages on port 1463 and write
-# them to /tmp/scribetest
-
 port=1463
 max_msg_per_second=2000000
-check_interval=1
+
+## We user buffering for client connections:
 
 <store>
-category=default
-type=buffer
-target_write_size=20480
-max_write_interval=1
-buffer_send_rate=1
-retry_interval=30
-retry_interval_range=10
+  category=default
+  type=buffer
+  retry_interval=30
+  retry_interval_range=10
 
   <primary>
     type=network
-    remote_host=<%= log_master %>
-    remote_port=1463
+    remote_host=<%= logging_server %>
+    remote_port=<%= remote_port %>
+    use_conn_pool=yes
   </primary>
 
   <secondary>
     type=file
     fs_type=std
-    file_path=/tmp
-#    base_filename=thisisoverwritten
-    max_size=10000000
+    file_path=<%= buffer_path %>
+    max_size=1000000
     add_newlines=1
   </secondary>
 
 </store>
-

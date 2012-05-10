@@ -15,40 +15,45 @@
 ## See accompanying file LICENSE or visit the Scribe site at:
 ## http://developers.facebook.com/scribe/ 
 
-
-##
-## Sample Scribe configuration
-##
-
-# This file configures Scribe to listen for messages on port 1463 and write
-# them to /tmp/scribetest
+## Master config has two stores: file and Graylog2 server
 
 port=1463
 max_msg_per_second=2000000
-check_interval=1
 
 <store>
-category=default
-type=multi
-target_write_size=20480
-max_write_interval=1
+  category=default
+  type=multi
 
   <store0>
-    type=network
-    remote_host=127.0.0.1
-    remote_port=1464
+    type=buffer
+    retry_interval=30
+    retry_interval_range=10
+    
+    <primary>
+       type=network
+       remote_host=127.0.0.1
+       remote_port=1464
+       use_conn_pool=yes
+    </primary>
+    
+    <secondary>
+       type=file
+       fs_type=std
+       file_path=<%= buffer_path %>
+       max_size=10000000
+       add_newlines=1
+    </secondary>
   </store0>
 
   <store1>
     type=file
-    file_path=/tmp
+    file_path=<%= storage_path %>
     fs_type=std
-#    base_filename=thisisoverwritten
-    max_size=1000000
-#    add_newlines=0
-#    create_symlink=no
+    add_newlines=1
+    create_symlink=yes
     write_stats=yes
+    rotate_period=daily
+    rotate_hour=0
+    rotate_minute=00
  </store1>
-
 </store>
-

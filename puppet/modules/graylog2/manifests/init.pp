@@ -1,146 +1,149 @@
 class graylog2 {
-    include graylog2::install, graylog2::config, graylog2::service
+    include graylog2::server 
+    include graylog2::web_interface
 }
 
-class graylog2::install {
-    include graylog2::install::server
-    include graylog2::install::web_interface
+class graylog2::server {
+    include graylog2::server::install, graylog2::server::config, graylog2::server::service
+    include graylog2::common
 }
 
-class graylog2::install::server {
-    package { "graylog2-server"
-        ensure      => "0.9.6",
+class graylog2::web_interface {
+    include graylog2::web_interface::install, graylog2::web_interface::config, graylog2::web_interface::service
+    include graylog2::common
+}
+
+class graylog2::common {
+    include user_accounts::graylog2
+}
+
+class graylog2::server::install {
+    package { "graylog2":
+        ensure      => installed,
     }
 }
 
-class graylog2::install::web_interface {
+class graylog2::web_interface::install {
 
-    $gl2_wroot  = "/opt/graylog2-web-interface"
-    $rbenv_root = "$gl2_wroot/rbenv"
-    $rbenv_ver  = "$rbenv_root/.rbenv-version"
-    $ruby_ver   = "1.9.2-p318"
+    $gl2web_base    = "/opt/graylog2-web-interface"
+
+    include apache-passenger
+
+    realize Package [ "httpd" ]
+    realize Package [["httpd-devel"],["zlib-devel"],["openssl-devel"],["make"],["gcc"],["gcc-c++"],["libcurl-devel"]]
+    realize Package [ "passenger" ]
+    realize Exec [ "passenger-install-apache2-module" ]
 
     Exec    {   
-        path        => [
-            '/usr/local/bin',
-            '/usr/bin', 
-            '/usr/sbin', 
-            '/bin',
-            '/sbin',
-            "$rbenv_root/shims",
-            "$rbenv_root/bin",
-            ],
         logoutput   => true,
-        cwd         => $gl2_wroot,
+        cwd         => $gl2web_base,
     }
 
     package { "graylog2-web-interface":
-        ensure      => "0.9.6",
+        ensure      => installed,
     }
 
-    exec { "$name-set-rbenv":
-        command     => "rbenv local $ruby_ver",
-        unless      => "rbenv local | grep $ruby_ver | grep $rbenv_ver",
-        notify      => "$name-rbenv-rehash",
+    package { "bundler":
+        ensure      => "1.0.21",
+        provider    => gem,
+        require     => Package ["graylog2-web-interface"],
     }
 
-    exec { "$name-rbenv-rehash":
-        command     => "rbenv rehash",
-        refreshonly => true,
-    }
-
-    exec { "$name-gembundle":
-        command     => "rbenv which bundle && bundle install",
-        timeout     => "900",
-        onlyif      => Exec [ "$name-set-rbenv" ],
-        unless      => "test -f $gl2_wroot/Gemfile.lock",
-        notify      => [ Exec [ "$name-passenger-compile" ],
-                         Exec [ "$name-rbenv-rehash" ]],
-    }
-
-    exec { "$name-passenger-compile":
-        command     => "rbenv which passenger; rbenv rehash; passenger package-runtime",
-        user        => graylog2,
-        unless      => "test -f .passenger",
+    exec { "bundle-install-graylog2-web":
+        command     => "bundle install",
+        require     => Package [ "bundler" ],
+        onlyif      => "test -f $gl2web_base/Gemfile",
+        unless      => "test -f $gl2web_base/Gemfile.lock",
     }
 
 }
 
-class graylog2::config {
-    include graylog2::config::server
-    include graylog2::config::web_interface
-}
-
-class graylog2::config::server {
+class graylog2::server::config {
 
     File {
-        require     => Class[ "graylog2::install::server" ],
-        notify      => Class[ "graylog2::service::server" ],
+        require     => Class[ "graylog2::server::install" ],
+        notify      => Class[ "graylog2::server::service" ],
+        owner       => graylog2,
+        group       => adm,
+        mode        => 664,
     }
 
-    file { "/etc/sysconfig/graylog2-server":
-        ensure      => present,
-        source      => "puppet:///modules/graylog2/etc/sysconfig/graylog2-server",
+    $gl2srv_base    = "/opt/graylog2-server"
+
+    file {[ "$gl2srv_base",
+            "$gl2srv_base/conf",
+            "$gl2srv_base/log",
+            "$gl2srv_base/run",
+        ]:
+        ensure      => directory,
+        require     => Package [ "graylog2" ],
     }
 
-    file { "/etc/graylog2.conf":
+    file { "/opt/graylog2-server/conf/graylog2.conf":
         ensure      => present,
-        source      => "puppet:///modules/graylog2/etc/graylog2.conf",
+        source      => "puppet:///modules/graylog2/opt/graylog2-server/conf/graylog2.conf",
     }
 
-    file { "/etc/init.d/graylog2-web":
+    file { "/etc/init.d/graylog2-server":
         ensure      => present,
-        source      => "puppet:///modules/graylog2/etc/sysconfig/puppetmaster",
+        source      => "puppet:///modules/graylog2/etc/init.d/graylog2-server",
+        owner       => root,
+        group       => root,
+        mode        => 755,
+    }
+
+### this has been moved to logging_server class:
+#    file { "/etc/sysconfig/graylog2-server":
+#        ensure      => present,
+#        source      => "puppet:///modules/graylog2/etc/sysconfig/graylog2-server",
+#        mode        => 644,
+#    }
+
+### Server logs - java process is very noisy when logging enabled
+    file { "/etc/logrotate.d/graylog2-server":
+        ensure      => present,
+        source      => "puppet:///modules/graylog2/etc/logrotate.d/graylog2-server",
+        mode        => 644,
     }
 
 }
 
-class graylog2::config::web_interface {
+class graylog2::web_interface::config {
 
     File {
-        require     => Class[ "graylog2::install::web_interface" ],
-        notify      => Class[ "graylog2::service::web_interface" ],
+        require     => Class[ "graylog2::web_interface::install" ],
+        notify      => Class[ "graylog2::web_interface::service" ],
     }
 
-    file { "/etc/sysconfig/graylog2-web":
+    $gl2web_base    = "/opt/graylog2-web-interface"
+
+    file { "$gl2web_base":
+        ensure      => directory,
+        owner       => graylog2,
+        group       => adm,
+        require     => Package [ "graylog2-web-interface" ],
+    }
+
+    file { "/etc/httpd/conf.d/graylog2-web.conf":
         ensure      => present,
-        source      => "puppet:///modules/graylog2/etc/sysconfig/puppetmaster",
+        source      => "puppet:///modules/graylog2/etc/httpd/conf.d/graylog2-web.conf",
     }
 
-    file { "/etc/init.d/graylog2-web":
+    file { "/opt/graylog2-web-interface/config/mongoid.yml":
         ensure      => present,
-        source      => "puppet:///modules/graylog2/etc/sysconfig/puppetmaster",
+        source      => "puppet:///modules/graylog2/opt/graylog2-web-interface/config/mongoid.yml",
     }
-
 }
 
-class graylog2::service::server {
-
-    Service {
-        require     => Class [ "graylog2::config::server" ],
-    }
-
+class graylog2::server::service {
     service { "graylog2-server":
         enable      => true,
-        pattern     => "/usr/sbin/puppetmasterd",
         ensure      => running,
-        hasstatus   => true,
+        hasrestart  => true,
+        require     => File [ "/etc/init.d/graylog2-server" ],
     }
-
 }
 
-class graylog2::service::web_interface {
-
-    Service {
-        require     => Class [ "graylog2::config::web_interface" ],
-    }
-
-    service { "graylog2-web":
-        enable      => true,
-        pattern     => "/usr/sbin/puppetmasterd",
-        ensure      => running,
-        hasstatus   => true,
-    }
-
+class graylog2::web_interface::service {
+    realize Service [ "httpd" ]
 }
-

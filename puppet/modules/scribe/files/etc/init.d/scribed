@@ -11,56 +11,141 @@
 # config:      /etc/sysconfig/scribed
 # pidfile:     /var/run/scribed.pid
 
+#set -x
+#set -e
+
 # Source function library
-. /etc/rc.d/init.d/functions
+. /etc/init.d/functions
 
-run="/usr/sbin/scribed"
-run_ctrl="/usr/sbin/scribe_ctrl"
-prog=$(basename $run)
+DESC="Scribe daemon"
+RUN_BIN="/usr/sbin/scribed"
+RUN_CTRL="/usr/sbin/scribe_ctrl"
+NAME=$(basename $RUN_BIN)
+DEFAULTS="/etc/sysconfig/$NAME"
+PID_FILE="/tmp/$NAME.pid"
+SUBSYS_LOCK="/var/lock/subsys/$NAME"
+USER="scribe"
+NICE_BIN=`which nice`
+ID_BIN=`which id`
+NOHUP=`which nohup`
+#SCRIBED_LOG="/tmp/scribed.log"
 
-[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+if [ -f $DEFAULTS ]; then
+    . $DEFAULTS
+fi
 
-port=$(egrep "^port=" $SCRIBED_CONFIG | awk -F"=" '{ print $2 }')
+if [ ! -f $SCRIBED_CONFIG ]; then
+    echo "cannot read config file!! exiting.."
+    exit 1
+fi
 
-lockfile=/var/lock/subsys/scribed
+$ID_BIN $USER 2>&1 >/dev/null
+if [ $? -ne 0 ]; then
+    echo "User $USER doesn't exist!! exiting.."
+    exit 1
+fi
+
+PORT=$(egrep "^port=" $SCRIBED_CONFIG | awk -F"=" '{ print $2 }')
+
+LOCKFILE=/var/lock/subsys/scribed
 
 start() {
-    echo -n $"Starting $prog: "
-    daemon nohup $run -c $SCRIBED_CONFIG &> /dev/null &
-    retval=$?
-    echo
-    [ $retval -eq 0 ] && touch $lockfile
-    return $retval
+    echo "Starting $DESC: "
+
+    PID=`ps u --user $USER | egrep -v bash | grep $USER | awk '{print $2}'`
+
+    if [ $PID ]; then
+        failure
+        echo "$DESC is already running!! - with PID: $PID"
+        exit 1
+    fi
+
+    ## Start daemon, and standard out to a file
+    daemon --user $USER "$NOHUP $NICE_BIN $RUN_BIN -c $SCRIBED_CONFIG >> $SCRIBED_LOG 2>&1 >/dev/null &"
+    RETVAL=$?
+
+    sleep 1
+    PID=`ps u --user $USER | egrep -v bash | grep $USER | awk '{print $2}'`
+    su - $USER -c "echo $PID > $PID_FILE"
+
+    if [ $RETVAL -eq 0 ] && [ $PID ]; then 
+        success
+        echo "Started $DESC successfully"
+        touch $SUBSYS_LOCK
+    else
+        failure
+        echo "failed to start $DESC!!"
+        exit 1
+    fi
+
+    return $RETVAL
 }
 
 stop() {
-    echo -n $"Stopping $prog: "
-    $run_ctrl stop $port
-    retval=$?
-    echo
-    [ $retval -eq 0 ] && rm -f $lockfile
-    return $retval
+    echo "Shutting down $DESC:"
+    PID=`ps u --user $USER | egrep -v bash | grep $USER | awk '{print $2}'`
+    if [ $PID ]; then
+        $RUN_CTRL stop $PORT
+    else
+        failure
+        echo "$DESC is not running"
+        RETVAL=1
+        return $RETVAL
+    fi
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then 
+        success 
+        echo "Shut down $DESC with PID: $PID"
+        rm -f $SUBSYS_LOCK
+    else
+        failure
+        echo "Failed to stop $DESC!!"
+        exit 1
+    fi
+
+    return $RETVAL
+
 }
 
 status() {
-    $run_ctrl status $port
+    $RUN_CTRL status $PORT
+
+    PID=`ps u --user $USER | egrep -v bash | grep $USER | awk '{print $2}'`
+    if [ $PID ]; then
+        success
+        echo "$DESC is running, with PID: $PID"
+    else
+        failure
+        echo "$DESC is not running!!"
+    fi
+
 }
 
-restart() {
-    stop
-    start
-}
-
-reload() {
-    echo "Probably not implemented."
-    $run_ctrl reload $port
-}
-
-case "$1" in
-    start|stop|restart|status|reload)
-        $1
-        ;;
-    *)
-        echo $"Usage: $0 {start|stop|status|restart|reload}"
-        exit 2
+case $1 in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	reload)
+		stop
+                sleep 1
+		start
+		;;
+	restart)
+		stop
+                sleep 1
+		start
+		;;
+	status)
+		status && exit 0 || exit $?
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload|status}"
+		exit 1
+		;;
 esac
+
+exit $RETVAL
+
