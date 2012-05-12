@@ -9,7 +9,26 @@ foundfiles = []
 dirlist = []
 filelist = []
 
-for root, dirs, files in os.walk('/home/andrew/Dropbox'):
+def convert_bytes(bytes):
+    bytes = float(bytes)
+    if bytes >= 1099511627776:
+        terabytes = bytes / 1099511627776
+        size = '%.2fT' % terabytes
+    elif bytes >= 1073741824:
+        gigabytes = bytes / 1073741824
+        size = '%.2fG' % gigabytes
+    elif bytes >= 1048576:
+        megabytes = bytes / 1048576
+        size = '%.2fM' % megabytes
+    elif bytes >= 1024:
+        kilobytes = bytes / 1024
+        size = '%.2fK' % kilobytes
+    else:
+        size = '%.2fb' % bytes
+    return size
+
+
+for root, dirs, files in os.walk('/opt/scribe/storage'):
 #    print root,
 #    print dirs,
 #    print files
@@ -29,14 +48,41 @@ foundfiles = filelist
 
 #print foundfiles
 
-for dir in dirlist:
-#    print dir
-    if 'Clients' in dir:
-        for file in foundfiles:
-            if 'png' in file:
-                filestat = os.stat(file)
-                filesize = filestat.st_size * 1024
-                print file
-                time.sleep(1)
-                print filesize, 'K'
+matcheddir = []
 
+for file in foundfiles:
+    print file, '\nnot in'
+    time.sleep(0.02)
+    if 'syslog' in file:
+        print file 
+        time.sleep(0.1)
+        if '_current' in file:
+            print file
+            fstat = os.stat(file)
+            fsize = fstat.st_size
+            if fsize > 0:
+                truesize = convert_bytes(fsize)
+                print truesize
+            else:
+                print '[empty]'
+
+
+#        matcheddir.append(dir)
+
+
+#print matcheddir
+
+#for dir in targetdir:
+#    for file in foundfiles:
+#            if file in dir:
+#                print dir
+#                print file
+#
+##        if 'Clients' in dir and 'png' in foundfiles:
+##        for file in foundfiles:
+#                filestat = os.stat(file)
+#                filesize = filestat.st_size * 1024
+##                print file
+#                time.sleep(1)
+#                print filesize, 'K'
+#
