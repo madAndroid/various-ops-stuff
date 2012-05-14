@@ -10,15 +10,14 @@ foundfiles = []
 dirlist = []
 filelist = []
 
-parser = OptionParser()
-parser.add_option("-f", "--file", dest="filename",
-                  help="write report to FILE", metavar="FILE")
-parser.add_option("-q", "--quiet",
-                  action="store_false", dest="verbose", default=True,
-                  help="don't print status messages to stdout")
-
-(options, args) = parser.parse_args()
-
+#parser = OptionParser()
+#parser.add_option("-f", "--file", dest="filename",
+#                  help="write report to FILE", metavar="FILE")
+#parser.add_option("-q", "--quiet",
+#                  action="store_false", dest="verbose", default=True,
+#                  help="don't print status messages to stdout")
+#
+#(options, args) = parser.parse_args()
 
 def convert_bytes(bytes):
     bytes = float(bytes)
@@ -40,42 +39,51 @@ def convert_bytes(bytes):
 
 
 for root, dirs, files in os.walk('/opt/scribe/storage'):
-#    print root,
-#    print dirs,
-#    print files
     for subdir in dirs:
-#        dirlist.append(subdir)
-#        print os.path.join(root, subdir)
         dirlist.append(os.path.join(root, subdir))
 
     for filename in files:
         filelist.append(os.path.join(root, filename))
 
-#print dirlist
-#print filelist
+all_files = filelist
+all_dirs = dirlist
 
-#foundfiles = glob("/home/andrew/*/*d*")
-foundfiles = filelist
+matched_dir = []
+exc_files = []
 
-#print foundfiles
+filtered_files = []
 
-matcheddir = []
-
-for file in foundfiles:
+for file in all_files:
     if 'syslog' in file:
-        if '_current' in file:
-            print file
-            fstat = os.stat(file)
-            fsize = fstat.st_size
-            if fsize > 0:
-                truesize = convert_bytes(fsize)
-                print truesize
-            else:
-                print '[empty]'
+        filtered_files.append(file)
 
+#        if '_current' in file:
+#            print file
+#            fstat = os.stat(file)
+#            fsize = fstat.st_size
+#            if fsize > 0:
+#                truesize = convert_bytes(fsize)
+#                print truesize
+#            else:
+#                print '[empty]'
 
-#        matcheddir.append(dir)
+print filtered_files
+print "[pause 1]"
+time.sleep(2)
 
+file_set = set(all_files)
+dir_set = set(all_dirs)
+
+print file_set
+print "[pause 2]"
+time.sleep(2)
+print dir_set
+
+inc_set = file_set.intersection(filtered_files)
+
+print "[pause 3]"
+time.sleep(2)
+print inc_set
 
 #print matcheddir
 
