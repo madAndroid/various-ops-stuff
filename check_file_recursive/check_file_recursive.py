@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-import os, sys, datetime, stat, time
+import os, sys, datetime, stat, time, optparse
+
 from stat import *
 from fnmatch import fnmatch
 from glob import glob
@@ -8,6 +9,16 @@ from glob import glob
 foundfiles = []
 dirlist = []
 filelist = []
+
+parser = OptionParser()
+parser.add_option("-f", "--file", dest="filename",
+                  help="write report to FILE", metavar="FILE")
+parser.add_option("-q", "--quiet",
+                  action="store_false", dest="verbose", default=True,
+                  help="don't print status messages to stdout")
+
+(options, args) = parser.parse_args()
+
 
 def convert_bytes(bytes):
     bytes = float(bytes)
@@ -51,11 +62,7 @@ foundfiles = filelist
 matcheddir = []
 
 for file in foundfiles:
-    print file, '\nnot in'
-    time.sleep(0.02)
     if 'syslog' in file:
-        print file 
-        time.sleep(0.1)
         if '_current' in file:
             print file
             fstat = os.stat(file)
