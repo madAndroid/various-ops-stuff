@@ -16,14 +16,7 @@ narrow_search_more = 'syslog'
 exclude_this = 'admin'
 exclude_this_too = 'client'
 
-#parser = OptionParser()
-#parser.add_option("-f", "--file", dest="filename",
-#                  help="write report to FILE", metavar="FILE")
-#parser.add_option("-q", "--quiet",
-#                  action="store_false", dest="verbose", default=True,
-#                  help="don't print status messages to stdout")
-#
-#(options, args) = parser.parse_args()
+__version__ = '0.0.1'
 
 def find_all_files(search_location, sub_search = None):
     for root, dirs, files in os.walk(search_location):
@@ -34,9 +27,10 @@ def find_all_files(search_location, sub_search = None):
 
     all_files = filelist
     file_set = set(all_files)
+
     all_dirs = dirlist
     dir_set = set(all_dirs)
-    #return file_set, dir_set
+
     return file_set
 
 ### the following are filter functions:
@@ -119,78 +113,36 @@ def exclude_files(all_files, exc_files1, exc_files2 = None):
 #            print fs
 #            time.sleep(1)
         return final_set
-  
-
-#def filter_files(all_files, search_term = None, exclude_these1 = None, exclude_these2 = None):
-#    filtered_files = []
-#    excluded_files = []
-#    excluded_files2 = []
-#    print "search_term:" + search_term 
-#    print "exclusions:" + exclude_these1
-#    if exclude_these2:
-#        print "more exclusions:" + exclude_these2
-#    time.sleep(2)
-#
-#    for file in all_files:
-#        if search_term in file:
-#            filtered_files.append(file)
-#    for exc_file in all_files:
-#        if exclude_these1 in exc_file:
-#            excluded_files.append(exc_file)
-#    if exclude_these2 is not None:
-#        for exc_file2 in all_files:
-#            if exclude_these2 in exc_file2:
-#                excluded_files2.append(exc_file2)
-#
-#    filtered_set = set(filtered_files)
-#    excluded_set = set(excluded_files)
-#    if excluded_files2:
-#        excluded_set2 = set(excluded_files2)
-#
-#    final_set = filtered_set - excluded_set
-#    try:
-#        excluded_set2
-#    except NameError:
-#        print ""
-#    else:
-#        final_set = final_set - excluded_set2
-#
-#    print "next, final set"
-#    final_list = list(final_set)
-#    for file in final_list:
-#        print file
-#        time.sleep(0.2)
-#    return final_list
 
 #matched_dir = []
 #exc_files = []
 
-file_list = {}
-final_files = {}
-final_files2 = {}
+#file_list = {}
+#final_files = {}
+#final_files2 = {}
+#
+#file_list = find_all_files(search_here)
+#
+#inclusions_set = include_files(file_list, narrow_search, narrow_search_more)
+#exclusions_set = exclude_files(file_list, exclude_this)
 
-file_list = find_all_files(search_here)
-
-inclusions_set = include_files(file_list, narrow_search, narrow_search_more)
-exclusions_set = exclude_files(file_list, exclude_this)
-
-print "Inclusions:"
-for file in inclusions_set:
-    print file
-#    time.sleep(.1)
-
-print "Exclusions:"
-for file in exclusions_set:
-    print file
-#    time.sleep(.1)
-
-return_set = inclusions_set - exclusions_set
-
-print "Final set:"
-for file in return_set:
-    print file
-#    time.sleep(.5)
-
+#print "Inclusions:"
+#for file in inclusions_set:
+#    print file
+##    time.sleep(.1)
+#
+#print "Exclusions:"
+#for file in exclusions_set:
+#    print file
+##    time.sleep(.1)
+#
+#return_set = inclusions_set - exclusions_set
+#
+#print "Final set:"
+#for file in return_set:
+#    print file
+##    time.sleep(.5)
+#
 #for f in final_files:
 #    print f
 #    time.sleep(0.2)
@@ -204,41 +156,6 @@ for file in return_set:
 #                print truesize
 #            else:
 #                print '[empty]'
-
-#print filtered_files
-#print "[pause 1]"
-#time.sleep(2)
-#
-#file_set = set(all_files)
-#dir_set = set(all_dirs)
-#
-#print file_set
-#print "[pause 2]"
-#time.sleep(2)
-#print dir_set
-#
-#inc_set = file_set.intersection(filtered_files)
-#
-#print "[pause 3]"
-#time.sleep(2)
-#print inc_set
-#
-#print matcheddir
-
-#for dir in targetdir:
-#    for file in foundfiles:
-#            if file in dir:
-#                print dir
-#                print file
-#
-##        if 'Clients' in dir and 'png' in foundfiles:
-##        for file in foundfiles:
-#                filestat = os.stat(file)
-#                filesize = filestat.st_size * 1024
-##                print file
-#                time.sleep(1)
-#                print filesize, 'K'
-#
 
 def convert_bytes(bytes):
     bytes = float(bytes)
@@ -258,4 +175,68 @@ def convert_bytes(bytes):
         size = '%.2fb' % bytes
     return size
 
+def run_check(path, check_size, check_time, _filter, _exclude):
+
+    file_list = find_all_files(path)
+
+    inclusions_set = include_files(file_list, _filter)
+    exclusions_set = exclude_files(file_list, _exclude)
+
+    final_set = inclusions_set - exclusions_set
+    print final_set
+    
+
+if __name__ == "__main__":
+    import optparse
+    parser = optparse.OptionParser(
+        usage= """
+            Nagios multi function file check
+            """,
+        version=__version__)
+    parser.add_option("-p", "--path",
+        help="path to check under - top level")
+    parser.add_option("-e", "--exclude",
+        help="a pattern to exclude (string only - no regex)")
+    parser.add_option("-f", "--filter",
+        help="a pattern to search for (string only - no regex)")
+    parser.add_option("-m", "--mtime",
+        help="last modified time")
+    parser.add_option("-s", "--size",
+        help="file size to check against")
+
+    (options, args) = parser.parse_args()
+
+    if not options.path:
+        parser.error("The -p (--path) option is required")
+
+    if not os.path.exists(options.path):
+        parser.error("Check path: '%s' does not exist" % options.path)
+
+#    if not options.mtime or options.size:
+#        parser.error("No attribute specified - we need something to check - mtime or size is required")
+#
+    if options.mtime and options.size:
+        parser.error("Unfortunately you can't check both size and time at once (just yet)")
+
+    if options.exclude:
+        _exclude = [f.strip() for f in options.exclude.split(',')]
+    else: 
+        _exclude = False
+
+    if options.filter:
+        _filter = [f.strip() for f in options.filter.split(',')]
+    else: 
+        _filter = False
+
+    if options.mtime:
+        _check_time = options.mtime
+    else:
+        _check_time = False
+
+    if options.size:
+        _check_size = options.size
+    else:
+        _check_size = False
+
+    run_check(options.path, _check_size, _check_time, _filter, _exclude)
 
