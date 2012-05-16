@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, sys, datetime, stat, time, optparse
+import os, sys, datetime, stat, time, optparse, re
 
 from stat import *
 from fnmatch import fnmatch
@@ -20,20 +20,17 @@ __version__ = '0.0.1'
 def find_all_files(search_location, sub_search = None):
 
     file_list = []
+    dir_list = []
     abs_path_list = []
     for root, dirs, files in os.walk(search_location):
         for subdir in dirs:
-            dirlist.append(os.path.join(root, subdir))
+            dir_list.append(os.path.join(root, subdir))
         for filename in files:
             abs_path_list.append(os.path.join(root, filename))
             file_list.append(filename)
-
+    
     all_files = file_list
-    file_set = set(all_files)
-
-    all_dirs = dirlist
-    dir_set = set(all_dirs)
-
+    all_dirs = dir_list
     all_files_abs = abs_path_list
 
     return all_files, all_files_abs
@@ -84,13 +81,62 @@ def exclude_files(all_files, exc_files):
             if exc_files[1] in file:
                 excluded_list2.append(file)
         excluded_list = set(excluded_list1) | set(excluded_list2) 
-    else: 
+    elif len(exc_files) > 2:
         print "only two search terms allowed"
+    else:
+        return ""
 
     uniq_exc_files = list(set(excluded_list))
 
     final_list = uniq_exc_files
     return final_list
+
+def check_file_size(filtered_files, size):
+
+    print size
+
+    pos_check = '+'
+    neg_check = '-'
+    
+    if pos_check in size:
+        size_check = '>' 
+        size_int = int(size.strip('+'))
+    else:
+        size_check = '<' 
+        size_int = int(size.strip('-'))
+
+    print size_check
+    print size_int
+
+    if size_check == '>':
+        for file in filtered_files:
+            fstat = os.stat(file)
+            fsize = fstat.st_size
+            print file
+            print fsize
+            time.sleep(2)
+            if fsize > size_int:
+                print "larger than"
+            else:
+                print "smaller than"
+    else:
+        for file in filtered_files:
+            fstat = os.stat(file)
+            fsize = fstat.st_size
+            print file
+            print fsize
+            time.sleep(2)
+            if fsize < size_int:
+                print "smaller than"
+            else:
+                print "larger than"
+
+
+    
+#    if size[0] != "+" or size[0] != "-":
+#        print "you need to specify an operator"
+#
+#    print size[0]
 
 
 #for f in final_files:
@@ -99,8 +145,6 @@ def exclude_files(all_files, exc_files):
 #
 #        if '_current' in file:
 #            print file
-#            fstat = os.stat(file)
-#            fsize = fstat.st_size
 #            if fsize > 0:
 #                truesize = convert_bytes(fsize)
 #                print truesize
@@ -125,34 +169,51 @@ def convert_bytes(bytes):
         size = '%.2fb' % bytes
     return size
 
-def run_check(path, check_size, check_time, filter, exclude):
+def run_check(path, check_size, check_time, include, exclude):
 
     (file_list, file_list_abs) = find_all_files(path)
 
-    if filter is not None:
-        inclusions_set = set(include_files(file_list, filter))
+    if include is not None:
+        inclusions_list = include_files(file_list_abs, include)
         #print inclusions_set
     else:
-        inclusion_set = set()
+        inclusions_list = []
 
     if exclude is not None: 
-        exclusions_set = set(exclude_files(file_list, exclude))
+        exclusions_list = exclude_files(file_list_abs, exclude)
         #print exclusions_set
     else:
-        excusion_set = set()
+        exclusions_list = []
 
-    final_set = inclusions_set - exclusions_set
+    if include and exclude is not None:
+        final_list = set_operations(inclusions_list, exclusions_list)
+    else:
+        if include is not None:
+            final_list = inclusions_list
+        else: 
+            final_list = list(set(file_list) - set(exclusions_list))
 
-    final_list = list(final_set)
     final_list.sort()
 
     for file in final_list:
         print file
 
-    num_items = len(list(final_set))
+    num_items = len(final_list)
+
+    if check_size is not None:
+        check_file_size(final_list, check_size)
 
     print "num items:"
     print num_items
+
+def set_operations(inclusions, exclusions):
+
+    inclusions_set = set(inclusions)
+    exclusions_set = set(exclusions)
+    
+    final_set = inclusions_set - exclusions_set
+
+    return list(final_set)
    
 
 if __name__ == "__main__":
@@ -166,8 +227,8 @@ if __name__ == "__main__":
         help="path to check under - top level")
     parser.add_option("-e", "--exclude",
         help="a pattern to exclude (string only - no regex)")
-    parser.add_option("-f", "--filter",
-        help="a pattern to search for (string only - no regex)")
+    parser.add_option("-i", "--include",
+        help="a pattern to include (string only - no regex)")
     parser.add_option("-m", "--mtime",
         help="last modified time")
     parser.add_option("-s", "--size",
@@ -190,22 +251,22 @@ if __name__ == "__main__":
     if options.exclude:
         _exclude = [f.strip() for f in options.exclude.split(',')]
     else: 
-        _exclude = ""
+        _exclude = None
 
-    if options.filter:
-        _filter = [f.strip() for f in options.filter.split(',')]
+    if options.include:
+        _include = [f.strip() for f in options.include.split(',')]
     else: 
-        _filter = ""
+        _include = None
 
     if options.mtime:
-        _check_time = options.mtime
+        _check_time = [f.strip() for f in options.mtime.split(',')]
     else:
-        _check_time = ""
+        _check_time = None
 
     if options.size:
         _check_size = options.size
     else:
-        _check_size = ""
+        _check_size = None
 
-    run_check(options.path, _check_size, _check_time, _filter, _exclude)
+    run_check(options.path, _check_size, _check_time, _include, _exclude)
 
