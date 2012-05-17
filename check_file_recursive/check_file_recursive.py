@@ -92,44 +92,63 @@ def exclude_files(all_files, exc_files):
     return final_list
 
 def check_file_size(filtered_files, size):
-
-    print size
-
+    
     pos_check = '+'
     neg_check = '-'
-    
     if pos_check in size:
         size_check = '>' 
-        size_int = int(size.strip('+'))
+        size_int = size.strip("+")
     else:
         size_check = '<' 
-        size_int = int(size.strip('-'))
+        size_int = size.strip("-")
 
-    print size_check
-    print size_int
+    byte_tag = size.lower()[-1:]
+    mb_tag = 'm'
+    kb_tag = 'k'
+    size_tmp = size_int.lower()
+    if mb_tag in byte_tag:
+        size_int = size_tmp.strip("m")
+    else:
+        size_int = size_tmp.strip("k") 
+
+    print "byte_tag:  " + byte_tag
+    print "size_check:  " + size_check
+    print "size_int:  " + size_int
+
+    print "checking"
+    time.sleep(2)
 
     if size_check == '>':
         for file in filtered_files:
-            fstat = os.stat(file)
-            fsize = fstat.st_size
-            print file
-            print fsize
-            time.sleep(2)
-            if fsize > size_int:
-                print "larger than"
-            else:
-                print "smaller than"
+            try:
+                fstat = os.stat(file)
+                fsize = fstat.st_size
+                print file
+                print fsize
+                time.sleep(2)
+                if fsize > size_int:
+                    print "larger than"
+                else:
+                    print "smaller than"
+            except OSError, err:
+                print "couldn't access file %s" % (file)
     else:
         for file in filtered_files:
-            fstat = os.stat(file)
-            fsize = fstat.st_size
-            print file
-            print fsize
-            time.sleep(2)
-            if fsize < size_int:
-                print "smaller than"
-            else:
-                print "larger than"
+            try:
+                fstat = os.stat(file)
+                fsize = fstat.st_size
+                print file
+                print fsize
+                time.sleep(2)
+                if fsize < size_int:
+                    print "smaller than"
+                else:
+                    print "larger than"
+            except OSError, err:
+                print "couldn't access file %s" % (file)
+
+    if byte_tag == kb_tag:
+        byte_size = size.strip
 
 
     
@@ -195,8 +214,8 @@ def run_check(path, check_size, check_time, include, exclude):
 
     final_list.sort()
 
-    for file in final_list:
-        print file
+#    for file in final_list:
+#        print file
 
     num_items = len(final_list)
 
@@ -220,19 +239,19 @@ if __name__ == "__main__":
     import optparse
     parser = optparse.OptionParser(
         usage= """
-            Nagios multi function file check
+            Nagios multi function file check\n
             """,
         version=__version__)
     parser.add_option("-p", "--path",
-        help="path to check under - top level")
+        help="path to check under - top level\n")
     parser.add_option("-e", "--exclude",
-        help="a pattern to exclude (string only - no regex)")
+        help="a pattern to exclude (string only - no regex)\n")
     parser.add_option("-i", "--include",
-        help="a pattern to include (string only - no regex)")
+        help="a pattern to include (string only - no regex)\n")
     parser.add_option("-m", "--mtime",
-        help="last modified time")
+        help="last modified time\n")
     parser.add_option("-s", "--size",
-        help="file size to check against")
+        help="file size to check against\n")
 
     (options, args) = parser.parse_args()
 
