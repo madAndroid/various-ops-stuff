@@ -11,82 +11,183 @@ dirlist = []
 
 __version__ = '0.0.1'
 
-def find_all_files(search_location, sub_search = None):
+### File finder:
 
+def find_all_files(search_location, inc_dirs, exc_dirs):
+    
     file_list = []
     dir_list = []
     abs_path_list = []
     for root, dirs, files in os.walk(search_location):
         for subdir in dirs:
-            #dir_list.append(os.path.join(root.lower(), subdir.lower()))
             dir_list.append(os.path.join(root, subdir))
         for filename in files:
-            #abs_path_list.append(os.path.join(root.lower(), filename.lower()))
             abs_path_list.append(os.path.join(root, filename))
-            #file_list.append(filename.lower())
             file_list.append(filename)
-    
+
     all_files = file_list
     all_dirs = dir_list
     all_files_abs = abs_path_list
 
-    return all_files, all_files_abs
+    processed_list = []
+
+    if inc_dirs and exc_dirs is not None:
+        inc_list = include_dirs(dir_list, inc_dirs)
+        exc_list = exclude_dirs(dir_list, exc_dirs)
+        tmp_list = set_operations(inc_list, exc_list)
+        for item in tmp_list:
+            if item in all_files_abs:
+                processed_list.append(item)
+        final_list = processed_list
+
+    elif inc_dirs is not None:
+        inc_list = include_dirs(dir_list, inc_dirs)
+        print inc_list
+        all_files_set = set(all_files_abs)
+        for item in all_files_set:
+            for dir_item in inc_list:
+                if dir_item in item:
+                    print dir_item
+                    time.sleep(1)
+                    processed_list.append(item)
+        final_list = processed_list
+        print final_list
+
+    elif exc_dirs is not None:
+        exc_list = exclude_dirs(dir_list, exc_dirs)
+        tmp_list = list(set(dir_list) - set(exc_list))
+        for item in tmp_list:
+            if item in all_files_abs:
+                processed_list.append(item)
+        final_list = processed_list
+    else:
+        final_list = dir_list
+
+    time.sleep(1)
+
+    all_files = file_list
+    all_dirs = dir_list
+    all_files_abs = abs_path_list
+
+    return all_files, all_files_abs, all_dirs
 
 ### the following are filter functions:
 
+### File Operations:
+
 def include_files(all_files, inc_files):
 
-    included_list = []
-    included_list1 = []
-    included_list2 = []
+    inc_list = []
+    inc_list1 = []
+    inc_list2 = []
 
     if len(inc_files) == 1:
-        for file in all_files:
-            if inc_files[0] in os.path.basename(file):
-                included_list.append(file)
+        for fn in all_files:
+            if inc_files[0] in os.path.basename(fn):
+                inc_list.append(fn)
     elif len(inc_files) == 2:
-        for file in all_files:
-            if inc_files[0] in os.path.basename(file):
-                included_list1.append(file)
-        for file in all_files:
-            if inc_files[1] in os.path.basename(file):
-                included_list2.append(file)
-        included_list = set(included_list1) & set(included_list2) 
+        for fn in all_files:
+            if inc_files[0] in os.path.basename(fn):
+                inc_list1.append(fn)
+        for fn in all_files:
+            if inc_files[1] in os.path.basename(fn):
+                inc_list2.append(fn)
+        inc_list = set(inc_list1) & set(inc_list2) 
     else: 
         print "only two search terms allowed"
 
-    uniq_inc_files = list(set(included_list))
+    final_list = list(set(inc_list))
 
-    final_list = uniq_inc_files
     return final_list
 
 def exclude_files(all_files, exc_files):
 
-    excluded_list = []
-    excluded_list1 = []
-    excluded_list2 = []
+    exc_list = []
+    exc_list1 = []
+    exc_list2 = []
 
     if len(exc_files) == 1:
-        for file in all_files:
-            if exc_files[0] in file:
-                excluded_list.append(file)
+        for fn in all_files:
+            if exc_files[0] in os.path.basename(fn):
+                exc_list.append(fn)
     elif len(exc_files) == 2:
-        for file in all_files:
-            if exc_files[0] in file:
-                excluded_list1.append(file)
-        for file in all_files:
-            if exc_files[1] in file:
-                excluded_list2.append(file)
-        excluded_list = set(excluded_list1) | set(excluded_list2) 
+        for fn in all_files:
+            if exc_files[0] in os.path.basename(fn):
+                exc_list1.append(fn)
+        for fn in all_files:
+            if exc_files[1] in os.path.basename(fn):
+                exc_list2.append(fn)
+        exc_list = set(exc_list1) | set(exc_list2) 
     elif len(exc_files) > 2:
         print "only two search terms allowed"
     else:
         return ""
 
-    uniq_exc_files = list(set(excluded_list))
+    final_list =  list(set(exc_list))
 
-    final_list = uniq_exc_files
     return final_list
+
+
+### Directory operations:
+
+def include_dirs(all_dirs, inc_dirs):
+
+    inc_list = []
+    inc_list1 = []
+    inc_list2 = []
+
+    print inc_dirs
+
+    if len(inc_dirs) == 1:
+        for dn in all_dirs:
+            if inc_dirs[0] in dn:
+                inc_list.append(dn)
+    elif len(inc_dirs) == 2:
+        for dn in all_dirs:
+            if inc_dirs[0] in dn:
+                inc_list1.append(dn)
+        for dn in all_dirs:
+            if inc_dirs[1] in dn:
+                inc_list2.append(dn)
+        inc_list = set(inc_list1) & set(inc_list2) 
+    else: 
+        print "only two search terms allowed"
+
+    print inc_list
+
+    final_list = list(set(inc_list))
+
+    return final_list
+
+def exclude_dirs(all_dirs, exc_dirs):
+
+    exc_list = []
+    exc_list1 = []
+    exc_list2 = []
+
+    if len(exc_dirs) == 1:
+        for dn in all_dirs:
+            if exc_dirs[0] in dn:
+                exc_list.append(dn)
+    elif len(exc_dirs) == 2:
+        for dn in all_dirs:
+            if exc_dirs[0] in dn:
+                exc_list1.append(dn)
+        for dn in all_dirs:
+            if exc_dirs[1] in dn:
+                exc_list2.append(dn)
+        exc_list = set(exc_list1) | set(exc_list2) 
+    elif len(exc_dirs) > 2:
+        print "only two search terms allowed"
+    else:
+        return ""
+
+    final_list =  list(set(exc_list))
+
+    return final_list
+
+
+### File Size Operations:
 
 def check_file_size(filtered_files, size):
     
@@ -147,7 +248,45 @@ def check_file_size(filtered_files, size):
     if byte_tag == kb_tag:
         byte_size = size.strip
 
+###
+### Main check Function:
+###
 
+def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_dirs):
+
+    (file_list, file_list_abs, dir_list) = find_all_files(path, inc_dirs, exc_dirs)
+
+    if inc_files and exc_files is not None:
+        inc_list = include_files(file_list_abs, inc_files)
+        exc_list = exclude_files(file_list_abs, exc_files)
+        final_list = set_operations(inc_list, exc_list)
+
+    elif inc_files is not None:
+        inc_list = include_files(file_list_abs, inc_files)
+        final_list = inc_list
+
+    elif exc_files is not None:
+        exc_list = exclude_files(file_list_abs, exc_files)
+        final_list = list(set(file_list_abs) - set(exc_list))
+
+    else:
+        final_list = file_list_abs
+
+    final_list.sort()
+
+    num_items = len(final_list)
+
+    if check_size is not None:
+        check_file_size(final_list, check_size)
+
+#    for f in final_list:
+#        print "%s" %(f) 
+#
+#    print "num items: %s" %(num_items)
+
+
+### Helpers:
+    
 def convert_bytes(bytes):
     bytes = float(bytes)
     if bytes >= 1099511627776:
@@ -177,43 +316,7 @@ def set_operations(inclusions, exclusions):
     return list(final_set)
 
 
-def run_check(path, check_size, check_time, include, exclude):
-
-    (file_list, file_list_abs) = find_all_files(path)
-
-    if include and exclude is not None:
-        #inclusions_list = include_files(file_list_abs, include)
-        inclusions_list = include_files(file_list_abs, include)
-        #exclusions_list = exclude_files(file_list_abs, exclude)
-        exclusions_list = exclude_files(file_list_abs, exclude)
-        final_list = set_operations(inclusions_list, exclusions_list)
-    elif include is not None:
-        #inclusions_list = include_files(file_list_abs, include)
-        inclusions_list = include_files(file_list_abs, include)
-        final_list = inclusions_list
-    elif exclude is not None:
-        exclusions_list = exclude_files(file_list_abs, exclude)
-        final_list = list(set(final_list_abs) - set(exclusions_list))
-    else:
-        final_list = file_list_abs
-
-#    for file in inclusions_list:
-#        print "Inclusions list: %s" %(file) 
-#        time.sleep(0.2)
-
-    final_list.sort()
-
-    num_items = len(final_list)
-
-    if check_size is not None:
-        check_file_size(final_list, check_size)
-
-    for file in final_list:
-        print "%s" %(file) 
-
-#    print "num items:"
-#    print num_items
-  
+### MAIN:
 
 if __name__ == "__main__":
     import optparse
@@ -224,10 +327,14 @@ if __name__ == "__main__":
         version=__version__)
     parser.add_option("-p", "--path",
         help="path to check under - top level\n")
-    parser.add_option("-e", "--exclude",
-        help="a pattern to exclude (string only - no regex)\n")
-    parser.add_option("-i", "--include",
-        help="a pattern to include (string only - no regex)\n")
+    parser.add_option("-e", "--exclude_files",
+        help="a file pattern to exclude (string only - no regex)\n")
+    parser.add_option("-i", "--include_files",
+        help="a file pattern to include (string only - no regex)\n")
+    parser.add_option("-E", "--exclude_dirs",
+        help="a directory pattern to exclude (string only - no regex)\n")
+    parser.add_option("-I", "--include_dirs",
+        help="a directory pattern to include (string only - no regex)\n")
     parser.add_option("-m", "--mtime",
         help="last modified time\n")
     parser.add_option("-s", "--size",
@@ -247,15 +354,25 @@ if __name__ == "__main__":
     if options.mtime and options.size:
         parser.error("Unfortunately you can't check both size and time at once (just yet)\n")
 
-    if options.exclude:
-        _exclude = [f.strip() for f in options.exclude.split(',')]
+    if options.exclude_files:
+        _exclude_files = [f.strip() for f in options.exclude_files.split(',')]
     else: 
-        _exclude = None
+        _exclude_files = None
 
-    if options.include:
-        _include = [f.strip() for f in options.include.split(',')]
+    if options.include_files:
+        _include_files = [f.strip() for f in options.include_files.split(',')]
     else: 
-        _include = None
+        _include_files = None
+
+    if options.exclude_dirs:
+        _exclude_dirs = [f.strip() for f in options.exclude_dirs.split(',')]
+    else: 
+        _exclude_dirs = None
+
+    if options.include_dirs:
+        _include_dirs = [f.strip() for f in options.include_dirs.split(',')]
+    else: 
+        _include_dirs = None
 
     if options.mtime:
         _check_time = [f.strip() for f in options.mtime.split(',')]
@@ -267,5 +384,5 @@ if __name__ == "__main__":
     else:
         _check_size = None
 
-    run_check(options.path, _check_size, _check_time, _include, _exclude)
+    run_check(options.path, _check_size, _check_time, _include_files, _exclude_files, _include_dirs, _exclude_dirs)
 
