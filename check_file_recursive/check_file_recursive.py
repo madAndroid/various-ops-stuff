@@ -34,61 +34,6 @@ def find_all_files(search_location):
     return all_files, all_files_abs, all_dirs_list
 
 
-### the following are filter functions:
-
-def filter_dirs(all_files_list, dir_list, inc_dirs=None, exc_dirs=None):
-
-    processed_list = []
-    tmp_list = []
-
-    if inc_dirs and exc_dirs is not None:
-        tmp_list = filter_dirs(all_files_list, all_dirs_list, inc_dirs, exc_dirs)
-        all_files_set = set(all_files_list) & set(tmp_list)
-    elif inc_dirs is not None:
-        tmp_list = filter_dirs(all_files_list, all_dirs_list, inc_dirs)
-        all_files_set = set(all_files_list) & set(tmp_list)
-    else:
-        tmp_list = filter_dirs(all_files_list, all_dirs_list, exc_dirs)
-        all_files_set = set(all_files_list) - set(tmp_list)
-
-
-    if inc_dirs and exc_dirs is not None:
-        inc_list = include_dirs(dir_list, inc_dirs)
-        exc_list = exclude_dirs(dir_list, exc_dirs)
-
-        tmp_list = list(set_operations(inc_list, exc_list))
-        for dir_item in tmp_list:
-            for item in all_files_list:
-                if dir_item in all_files_list:
-                    processed_list.append(item)
-        tmp_set = set(processed_list)
-        final_set = set(all_files_list) & tmp_set
-
-    elif inc_dirs is not None:
-        tmp_list = include_dirs(dir_list, inc_dirs)
-        for dir_item in tmp_list:
-            for item in all_files_list:
-                if dir_item in all_files_list:
-                    processed_list.append(item)
-        tmp_set = set(processed_list)
-        final_set = set(all_files_list) & tmp_set
-
-    elif exc_dirs is not None:
-        exc_list = exclude_dirs(dir_list, exc_dirs)
-        tmp_set= list((set(dir_list) - set(exc_list)))
-        for dir_item in tmp_set:
-            for item in all_files_list:
-                if dir_item in all_files_list:
-                    processed_list.append(item)
-        tmp_set = set(processed_list)
-        final_set = set(all_files_list) - tmp_set
-
-    else:
-        final_set = set(all_files_list)
-
-    return list(final_set)
-
-
 ### File Operations:
 
 def include_files(all_files, inc_files):
@@ -99,14 +44,14 @@ def include_files(all_files, inc_files):
 
     if len(inc_files) == 1:
         for fn in all_files:
-            if inc_files[0] in os.path.basename(fn):
+            if inc_files[0] in os.path.basename(fn.lower()):
                 inc_list.append(fn)
     elif len(inc_files) == 2:
         for fn in all_files:
-            if inc_files[0] in os.path.basename(fn):
+            if inc_files[0] in os.path.basename(fn.lower()):
                 inc_list1.append(fn)
         for fn in all_files:
-            if inc_files[1] in os.path.basename(fn):
+            if inc_files[1] in os.path.basename(fn.lower()):
                 inc_list2.append(fn)
         inc_list = set(inc_list1) & set(inc_list2) 
     else: 
@@ -124,14 +69,14 @@ def exclude_files(all_files, exc_files):
 
     if len(exc_files) == 1:
         for fn in all_files:
-            if exc_files[0] in os.path.basename(fn):
+            if exc_files[0] in os.path.basename(fn.lower()):
                 exc_list.append(fn)
     elif len(exc_files) == 2:
         for fn in all_files:
-            if exc_files[0] in os.path.basename(fn):
+            if exc_files[0] in os.path.basename(fn.lower()):
                 exc_list1.append(fn)
         for fn in all_files:
-            if exc_files[1] in os.path.basename(fn):
+            if exc_files[1] in os.path.basename(fn.lower()):
                 exc_list2.append(fn)
         exc_list = set(exc_list1) | set(exc_list2) 
     else:
@@ -194,65 +139,65 @@ def exclude_dirs(all_dirs, exc_dirs):
 
 ### File Size Operations:
 
-def check_file_size(filtered_files, size):
-    
-    pos_check = '+'
-    neg_check = '-'
-    if pos_check in size:
-        size_check = '>' 
-        size_int = size.strip("+")
-    else:
-        size_check = '<' 
-        size_int = size.strip("-")
-
-    byte_tag = size.lower()[-1:]
-    mb_tag = 'm'
-    kb_tag = 'k'
-    size_tmp = size_int.lower()
-    if mb_tag in byte_tag:
-        size_int = size_tmp.strip("m")
-    else:
-        size_int = size_tmp.strip("k") 
-
-    print "byte_tag:  " + byte_tag
-    print "size_check:  " + size_check
-    print "size_int:  " + size_int
-
-    print "checking"
-    time.sleep(2)
-
-    if size_check == '>':
-        for file in filtered_files:
-            try:
-                fstat = os.stat(file)
-                fsize = fstat.st_size
-                print file
-                print fsize
-                time.sleep(2)
-                if fsize > size_int:
-                    print "larger than"
-                else:
-                    print "smaller than"
-            except OSError, err:
-                print "couldn't access file %s" % (file)
-    else:
-        for file in filtered_files:
-            try:
-                fstat = os.stat(file)
-                fsize = fstat.st_size
-                print file
-                print fsize
-                time.sleep(2)
-                if fsize < size_int:
-                    print "smaller than"
-                else:
-                    print "larger than"
-            except OSError, err:
-                print "couldn't access file %s" % (file)
-
-    if byte_tag == kb_tag:
-        byte_size = size.strip
-
+#def check_file_size(filtered_files, size):
+#    
+#    pos_check = '+'
+#    neg_check = '-'
+#    if pos_check in size:
+#        size_check = '>' 
+#        size_int = size.strip("+")
+#    else:
+#        size_check = '<' 
+#        size_int = size.strip("-")
+#
+#    byte_tag = size.lower()[-1:]
+#    mb_tag = 'm'
+#    kb_tag = 'k'
+#    size_tmp = size_int.lower()
+#    if mb_tag in byte_tag:
+#        size_int = size_tmp.strip("m")
+#    else:
+#        size_int = size_tmp.strip("k") 
+#
+#    print "byte_tag:  " + byte_tag
+#    print "size_check:  " + size_check
+#    print "size_int:  " + size_int
+#
+#    print "checking"
+#    time.sleep(2)
+#
+#    if size_check == '>':
+#        for file in filtered_files:
+#            try:
+#                fstat = os.stat(file)
+#                fsize = fstat.st_size
+#                print file
+#                print fsize
+#                time.sleep(2)
+#                if fsize > size_int:
+#                    print "larger than"
+#                else:
+#                    print "smaller than"
+#            except OSError, err:
+#                print "couldn't access file %s" % (file)
+#    else:
+#        for file in filtered_files:
+#            try:
+#                fstat = os.stat(file)
+#                fsize = fstat.st_size
+#                print file
+#                print fsize
+#                time.sleep(2)
+#                if fsize < size_int:
+#                    print "smaller than"
+#                else:
+#                    print "larger than"
+#            except OSError, err:
+#                print "couldn't access file %s" % (file)
+#
+#    if byte_tag == kb_tag:
+#        byte_size = size.strip
+#
 ###
 ### Main check Function:
 ###
@@ -264,39 +209,59 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     if inc_files and exc_files is not None:
         inc_list = include_files(file_list_abs, inc_files)
         exc_list = exclude_files(file_list_abs, exc_files)
-        final_list = set_operations(inc_list, exc_list)
+        final_file_list = set_operations(inc_list, exc_list)
 
     elif inc_files is not None:
         inc_list = include_files(file_list_abs, inc_files)
-        final_list = inc_list
+        final_file_list = inc_list
 
     elif exc_files is not None:
         exc_list = exclude_files(file_list_abs, exc_files)
-        final_list = list(set(file_list_abs) - set(exc_list))
+        final_file_list = list(set(file_list_abs) - set(exc_list))
 
     else:
-        final_list = file_list_abs
+        final_file_list = file_list_abs
 
 
     if inc_dirs and exc_dirs is not None:
         inc_list = include_dirs(dir_list, inc_dirs)
         exc_list = exclude_dirs(dir_list, exc_dirs)
-        final_list = set_operations(inc_list, exc_list)
+        final_dir_list = set_operations(inc_list, exc_list)
 
     elif inc_dirs is not None:
         inc_list = include_dirs(dir_list, inc_dirs)
-        final_list = inc_list
+        final_dir_list = inc_list
 
     elif exc_dirs is not None:
         exc_list = exclude_dirs(dir_list, exc_dirs)
-        final_list = list(set(dir_list) - set(exc_list))
+        final_dir_list = list(set(dir_list) - set(exc_list))
 
     else:
         final_dir_list = dir_list
 
+    final_dir_list.sort()
+    final_file_list.sort()
 
-    final_list.sort()
+    filter_dir = []
+    final_files = []
 
+    for fn in final_file_list:
+        filter_dir.append(os.path.dirname(fn))
+
+    final_dirs = set(filter_dir) & set(final_dir_list) 
+
+    print final_dirs
+    print final_file_list
+
+    for file in final_file_list:
+        for dir in final_dirs:
+            print dir
+            if dir in final_file_list:
+                print file
+                final_files.append(file)
+    
+    final_list = final_files
+    
     num_items = len(final_list)
 
     if check_size is not None:
@@ -304,7 +269,7 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
 
     for f in final_list:
         print "%s" %(f) 
-        time.sleep(2)
+        time.sleep(0.2)
 
     print "num items: %s" %(num_items)
 
