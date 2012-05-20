@@ -206,6 +206,8 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
 
     (file_list, file_list_abs, dir_list) = find_all_files(path)
 
+    final_files = []
+
     if inc_files and exc_files is not None:
         inc_list = include_files(file_list_abs, inc_files)
         exc_list = exclude_files(file_list_abs, exc_files)
@@ -222,7 +224,6 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     else:
         final_file_list = file_list_abs
 
-
     if inc_dirs and exc_dirs is not None:
         inc_list = include_dirs(dir_list, inc_dirs)
         exc_list = exclude_dirs(dir_list, exc_dirs)
@@ -238,38 +239,47 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
 
     else:
         final_dir_list = dir_list
-
-    final_dir_list.sort()
-    final_file_list.sort()
+    
+#    print final_dir_list
 
     filter_dir = []
-    final_files = []
 
-    for fn in final_file_list:
-        filter_dir.append(os.path.dirname(fn))
+    if inc_dirs or exc_dirs is not None:
+        for fn in final_file_list:
+            filter_dir.append(os.path.dirname(fn))
 
-    final_dirs = set(filter_dir) & set(final_dir_list) 
+        if inc_dirs is not None:
+            final_dirs = set(final_dir_list) & set(filter_dir)
+            for tmp_file in final_file_list:
+                for tmp_dir in final_dirs:
+                    if tmp_dir in os.path.dirname(tmp_file):
+                        print "File: %s" %(tmp_file)
+                        final_files.append(tmp_file)
 
-    print final_dirs
-    print final_file_list
+        if exc_dirs is not None:
+            final_dirs = set(final_dir_list) - set(filter_dir)
+            for tmp_file in final_file_list:
+                for tmp_dir in final_dirs:
+                    if tmp_dir in os.path.dirname(tmp_file):
+                        print "File: %s" %(tmp_file)
+                        final_file_list.remove(tmp_file)
+    else:
+        final_files = final_file_list
 
-    for file in final_file_list:
-        for dir in final_dirs:
-            print dir
-            if dir in final_file_list:
-                print file
-                final_files.append(file)
-    
+    final_dir_list.sort()
+    final_files.sort()
+
+    final_list = [] 
     final_list = final_files
     
     num_items = len(final_list)
 
-    if check_size is not None:
-        check_file_size(final_list, check_size)
+#    if check_size is not None:
+#        check_file_size(final_list, check_size)
 
-    for f in final_list:
-        print "%s" %(f) 
-        time.sleep(0.2)
+#    for f in final_list:
+#        print "%s" %(f) 
+#        time.sleep(0.2)
 
     print "num items: %s" %(num_items)
 
