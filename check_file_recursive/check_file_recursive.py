@@ -19,7 +19,7 @@ from subprocess import Popen, PIPE, call
     - 50 = CRITICAL
 
     :change: B{0.0.1} - 2012-05-21
-    - Force copy True for second attempt if first attempt fails.
+    - Checking list of files by name, with filters on file and directory names
     """
 
 __author__ = "Andrew Stangl"
@@ -226,64 +226,57 @@ def exclude_dirs(all_dirs, exc_dirs):
 
 ### File Size Operations:
 
-#def check_file_size(filtered_files, size):
-#    
-#    pos_check = '+'
-#    neg_check = '-'
-#    if pos_check in size:
-#        size_check = '>' 
-#        size_int = size.strip("+")
-#    else:
-#        size_check = '<' 
-#        size_int = size.strip("-")
-#
-#    byte_tag = size.lower()[-1:]
-#    mb_tag = 'm'
-#    kb_tag = 'k'
-#    size_tmp = size_int.lower()
-#    if mb_tag in byte_tag:
-#        size_int = size_tmp.strip("m")
-#    else:
-#        size_int = size_tmp.strip("k") 
-#
-#    print "byte_tag:  " + byte_tag
-#    print "size_check:  " + size_check
-#    print "size_int:  " + size_int
-#
-#    print "checking"
-#    time.sleep(2)
-#
-#    if size_check == '>':
-#        for file in filtered_files:
-#            try:
-#                fstat = os.stat(file)
-#                fsize = fstat.st_size
-#                print file
-#                print fsize
-#                time.sleep(2)
-#                if fsize > size_int:
-#                    print "larger than"
-#                else:
-#                    print "smaller than"
-#            except OSError, err:
-#                print "couldn't access file %s" % (file)
-#    else:
-#        for file in filtered_files:
-#            try:
-#                fstat = os.stat(file)
-#                fsize = fstat.st_size
-#                print file
-#                print fsize
-#                time.sleep(2)
-#                if fsize < size_int:
-#                    print "smaller than"
-#                else:
-#                    print "larger than"
-#            except OSError, err:
-#                print "couldn't access file %s" % (file)
-#
-#    if byte_tag == kb_tag:
-#        byte_size = size.strip
+def check_file_size(filtered_files, size):
+    
+    pos_check = '+'
+    neg_check = '-'
+    if pos_check in size:
+        size_check = '>' 
+        size_int = size.strip("+")
+    else:
+        size_check = '<' 
+        size_int = size.strip("-")
+
+    byte_tag = size.lower()[-1:]
+    mb_tag = 'm'
+    kb_tag = 'k'
+    size_tmp = size_int.lower()
+    if mb_tag in byte_tag:
+        size_int = size_tmp.strip("m")
+    else:
+        size_int = size_tmp.strip("k") 
+    
+    _logger.debug("Byte tag: %s size_check: %s size_int: %s " 
+        %(byte_tag, size_check, size_int))
+
+    print "checking"
+    time.sleep(0.02)
+
+    if size_check == '>':
+        for file in filtered_files:
+            try:
+                fstat = os.stat(file)
+                fsize = fstat.st_size
+                if fsize > size_int:
+                    print "larger than"
+                else:
+                    print "smaller than"
+            except OSError, err:
+                print "couldn't access file %s" % (file)
+    else:
+        for file in filtered_files:
+            try:
+                fstat = os.stat(file)
+                fsize = fstat.st_size
+                if fsize < size_int:
+                    print "smaller than"
+                else:
+                    print "larger than"
+            except OSError, err:
+                print "couldn't access file %s" % (file)
+
+    if byte_tag == kb_tag:
+        byte_size = size.strip
 
 ###
 ### Main check Function:
@@ -297,17 +290,22 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
 
     if check_size is not None:
         check_file_size(ready_list, check_size)
-    
-    ready_list.sort()
+    else:
+        ready_list.sort()
+        num_items = len(ready_list)
+        for f in ready_list:
+            _logger.info("'%s' found", f)
+        _logger.info("'%s' Files found", num_items)
 
-    num_items = len(ready_list)
+#    if check_time is not None:
+#        check_file_age(ready_list, check_time)
+#    else:
+#        ready_list.sort()
+#        num_items = len(ready_list)
+#        for f in ready_list:
+#            _logger.info("'%s' found", f)
+#        _logger.info("'%s' Files found", num_items)
 
-    for f in ready_list:
-        _logger.info("'%s' found", f)
-
-    _logger.info("'%s' Files found", num_items)
-
-    #print ready_list
 
 ### Helpers:
 
