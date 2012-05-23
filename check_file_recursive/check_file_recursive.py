@@ -233,51 +233,70 @@ def check_file_size(filtered_files, size):
     if pos_check in size:
         size_check = '>' 
         size_int = size.strip("+")
+        threshold = 'above'
     else:
         size_check = '<' 
         size_int = size.strip("-")
+        threshold = 'below'
 
     byte_tag = size.lower()[-1:]
     mb_tag = 'm'
     kb_tag = 'k'
     size_tmp = size_int.lower()
     if mb_tag in byte_tag:
-        size_int = size_tmp.strip("m")
+        size_int = int(size_tmp.strip("m")) * 1024 * 1024
     else:
-        size_int = size_tmp.strip("k") 
+        size_int = int(size_tmp.strip("k")) * 1024
     
     _logger.debug("Byte tag: %s size_check: %s size_int: %s " 
         %(byte_tag, size_check, size_int))
 
-    print "checking"
-    time.sleep(0.02)
+    _logger.info("Checking sizes ...")
+
+    target_files = []
+
+    filtered_list = []
+    filtered_list = list(filtered_files)
+
+    filtered_list.sort() 
 
     if size_check == '>':
-        for file in filtered_files:
+        for file in filtered_list:
             try:
                 fstat = os.stat(file)
                 fsize = fstat.st_size
                 if fsize > size_int:
-                    print "larger than"
+                    _logger.debug("File: %s is larger than size: %s " %(file,size_tmp))
+                    target_files.append(file)
                 else:
-                    print "smaller than"
+                    _logger.debug("File: %s is smaller than size: %s " %(file,size_tmp))
             except OSError, err:
-                print "couldn't access file %s" % (file)
+                _logger.error("Cannot access file: %s " %(file))
     else:
-        for file in filtered_files:
+        for file in filtered_list:
             try:
                 fstat = os.stat(file)
                 fsize = fstat.st_size
                 if fsize < size_int:
-                    print "smaller than"
+                    _logger.debug("File: %s is smaller than size: %s " %(file,size_tmp))
+                    target_files.append(file)
                 else:
-                    print "larger than"
+                    _logger.debug("File: %s is larger than size: %s " %(file,size_tmp))
             except OSError, err:
-                print "couldn't access file %s" % (file)
+                _logger.error("Cannot access file: %s " %(file))
 
     if byte_tag == kb_tag:
         byte_size = size.strip
 
+    check_list = []
+    target_list = list(set(target_files))
+    target_list.sort()
+    
+    if len(target_list) > 0:
+        for f in target_list:
+            _logger.debug("File: %s is %s the threshold of size: %s " %(f,threshold,size_tmp))
+        _logger.info("%s files are %s the threshold of size: %s " %(len(target_list),threshold,size_tmp))
+            
 ###
 ### Main check Function:
 ###
@@ -286,7 +305,7 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
 
     (file_list, file_list_abs, dir_list) = find_all_files(path)
 
-    ready_list = filter_files(file_list_abs, dir_list, inc_files, exc_files, inc_dirs, exc_dirs)
+    ready_list = set(filter_files(file_list_abs, dir_list, inc_files, exc_files, inc_dirs, exc_dirs))
 
     if check_size is not None:
         check_file_size(ready_list, check_size)
