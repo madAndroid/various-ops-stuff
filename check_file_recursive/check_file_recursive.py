@@ -296,7 +296,84 @@ def check_file_size(filtered_files, size):
         for f in target_list:
             _logger.debug("File: %s is %s the threshold of size: %s " %(f,threshold,size_tmp))
         _logger.info("%s files are %s the threshold of size: %s " %(len(target_list),threshold,size_tmp))
-            
+
+    return target_list
+
+### File Size Operations:
+
+#def check_file_age(filtered_files, age):
+    
+#    pos_check = '+'
+#    neg_check = '-'
+#    if pos_check in size:
+#        size_check = '>' 
+#        size_int = size.strip("+")
+#        threshold = 'above'
+#    else:
+#        size_check = '<' 
+#        size_int = size.strip("-")
+#        threshold = 'below'
+#
+#    byte_tag = size.lower()[-1:]
+#    mb_tag = 'm'
+#    kb_tag = 'k'
+#    size_tmp = size_int.lower()
+#    if mb_tag in byte_tag:
+#        size_int = int(size_tmp.strip("m")) * 1024 * 1024
+#    else:
+#        size_int = int(size_tmp.strip("k")) * 1024
+#    
+#    _logger.debug("Byte tag: %s size_check: %s size_int: %s " 
+#        %(byte_tag, size_check, size_int))
+#
+#    _logger.info("Checking sizes ...")
+#
+#    target_files = []
+#
+#    filtered_list = []
+#    filtered_list = list(filtered_files)
+#
+#    filtered_list.sort() 
+#
+#    if size_check == '>':
+#        for file in filtered_list:
+#            try:
+#                fstat = os.stat(file)
+#                fsize = fstat.st_size
+#                if fsize > size_int:
+#                    _logger.debug("File: %s is larger than size: %s " %(file,size_tmp))
+#                    target_files.append(file)
+#                else:
+#                    _logger.debug("File: %s is smaller than size: %s " %(file,size_tmp))
+#            except OSError, err:
+#                _logger.error("Cannot access file: %s " %(file))
+#    else:
+#        for file in filtered_list:
+#            try:
+#                fstat = os.stat(file)
+#                fsize = fstat.st_size
+#                if fsize < size_int:
+#                    _logger.debug("File: %s is smaller than size: %s " %(file,size_tmp))
+#                    target_files.append(file)
+#                else:
+#                    _logger.debug("File: %s is larger than size: %s " %(file,size_tmp))
+#            except OSError, err:
+#                _logger.error("Cannot access file: %s " %(file))
+#
+#    if byte_tag == kb_tag:
+#        byte_size = size.strip
+#
+#    check_list = []
+#    target_list = list(set(target_files))
+#    target_list.sort()
+#    
+#    if len(target_list) > 0:
+#        for f in target_list:
+#            _logger.debug("File: %s is %s the threshold of size: %s " %(f,threshold,size_tmp))
+#        _logger.info("%s files are %s the threshold of size: %s " %(len(target_list),threshold,size_tmp))
+#
+#    return target_list
+#            
 ###
 ### Main check Function:
 ###
@@ -307,14 +384,20 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
 
     ready_list = set(filter_files(file_list_abs, dir_list, inc_files, exc_files, inc_dirs, exc_dirs))
 
-    if check_size is not None:
-        check_file_size(ready_list, check_size)
+    if check_size and check_time is not None:
+        file_size_list = check_file_size(ready_list, check_size)
+        file_age_list = check_file_age(ready_list, check_time)
+        final_check_list = set(final_size_list) & set (file_age_list)
+    elif check_size is not None:
+        final_check_list = check_file_size(ready_list, check_size)
     else:
-        ready_list.sort()
-        num_items = len(ready_list)
-        for f in ready_list:
-            _logger.info("'%s' found", f)
-        _logger.info("'%s' Files found", num_items)
+        final_check_list = check_file_age(ready_list, check_time)
+
+    final_check_list.sort()
+    num_items = len(final_check_list)
+    for f in final_check_list:
+        _logger.info("'%s' found", f)
+    _logger.info("'%s' Files found", num_items)
 
 #    if check_time is not None:
 #        check_file_age(ready_list, check_time)
@@ -398,11 +481,11 @@ if __name__ == "__main__":
     if not os.path.exists(options.path):
         parser.error("Check path: '%s' does not exist" % options.path)
 
-#    if not options.mtime or options.size:
-#        parser.error("No attribute specified - we need something to check - mtime or size is required")
+    if not options.size and not options.mtime:
+        parser.error("\n\tNo attribute specified - we need something to check - mtime or size is required\n")
 
     if options.mtime and options.size:
-        parser.error("Unfortunately you can't check both size and time at once (just yet)\n")
+        parser.error("\n\tUnfortunately you can't check both size and time at once (just yet)\n")
 
     if options.exclude_files:
         _exclude_files = [f.strip() for f in options.exclude_files.split(',')]
