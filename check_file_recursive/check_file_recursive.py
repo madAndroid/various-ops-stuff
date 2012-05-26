@@ -308,10 +308,12 @@ def check_file_age(filtered_files, age):
         age_check = '>' 
         age_int = age.strip("+")
         threshold = 'after'
+        age_ident = 'older'
     else:
         age_check = '<' 
         age_int = age.strip("-")
         threshold = 'before'
+        age_ident = 'younger'
 
     time_tag = age.lower()[-1:]
 
@@ -324,16 +326,16 @@ def check_file_age(filtered_files, age):
 
     if sec_tag in time_tag:
         age_int = int(age_tmp.strip("s"))
-        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
     elif min_tag in time_tag:
         age_int = int(age_tmp.strip("m")) * 60
-        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
     elif hrs_tag in time_tag:
         age_int = int(age_tmp.strip("h")) * 60 * 60
-        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
     else:
         age_int = int(age_tmp.strip("d")) * 60 * 60 * 24
-        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
    
     _logger.debug("Age tag: %s age_check: %s age_int: %s " 
         %(time_tag, age_check, age_int))
@@ -351,7 +353,9 @@ def check_file_age(filtered_files, age):
         for file in filtered_list:
             try:
                 fstat = os.stat(file)
-                fmage = fstat.st_mtime
+                fmtime = fstat.st_mtime
+                fmage = time.time() - fmtime
+                #_logger.info("Current file: %s was modified %s ago" %(file, convert_seconds(fmage)))
                 if fmage > age_int:
                     _logger.debug("File: %s is older than: %s " %(file,age_tmp))
                     target_files.append(file)
@@ -363,7 +367,9 @@ def check_file_age(filtered_files, age):
         for file in filtered_list:
             try:
                 fstat = os.stat(file)
-                fmage = fstat.st_mtime
+                fmtime = fstat.st_mtime
+                fmage = time.time() - fmtime
+                #_logger.info("Current file: %s was modified %s ago" %(file, convert_seconds(fmage)))
                 if fmage < age_int:
                     _logger.debug("File: %s is smaller than size: %s " %(file,age_tmp))
                     target_files.append(file)
@@ -440,6 +446,22 @@ def convert_bytes(bytes):
     else:
         size = '%.2fb' % bytes
     return size
+
+
+def convert_seconds(seconds):
+    seconds = int(seconds)
+    if seconds >= 86400:
+        days = seconds / 86400
+        age = '%d days' % days
+    elif seconds >= 3600:
+        hours = seconds / 3600
+        age = '%d hours' % hours
+    elif seconds >= 60:
+        minutes = seconds / 60
+        age = '%d minutes' % minutes
+    else:
+        age = '%d seconds' % seconds
+    return age
 
 
 def set_operations(inclusions, exclusions):
