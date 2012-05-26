@@ -299,81 +299,93 @@ def check_file_size(filtered_files, size):
 
     return target_list
 
-### File Size Operations:
+## File Age Operations:
+def check_file_age(filtered_files, age):
+    afr_check = '+'
+    bfr_check = '-'
 
-#def check_file_age(filtered_files, age):
-    
-#    pos_check = '+'
-#    neg_check = '-'
-#    if pos_check in size:
-#        size_check = '>' 
-#        size_int = size.strip("+")
-#        threshold = 'above'
-#    else:
-#        size_check = '<' 
-#        size_int = size.strip("-")
-#        threshold = 'below'
-#
-#    byte_tag = size.lower()[-1:]
-#    mb_tag = 'm'
-#    kb_tag = 'k'
-#    size_tmp = size_int.lower()
-#    if mb_tag in byte_tag:
-#        size_int = int(size_tmp.strip("m")) * 1024 * 1024
-#    else:
-#        size_int = int(size_tmp.strip("k")) * 1024
-#    
-#    _logger.debug("Byte tag: %s size_check: %s size_int: %s " 
-#        %(byte_tag, size_check, size_int))
-#
-#    _logger.info("Checking sizes ...")
-#
-#    target_files = []
-#
-#    filtered_list = []
-#    filtered_list = list(filtered_files)
-#
-#    filtered_list.sort() 
-#
-#    if size_check == '>':
-#        for file in filtered_list:
-#            try:
-#                fstat = os.stat(file)
-#                fsize = fstat.st_size
-#                if fsize > size_int:
-#                    _logger.debug("File: %s is larger than size: %s " %(file,size_tmp))
-#                    target_files.append(file)
-#                else:
-#                    _logger.debug("File: %s is smaller than size: %s " %(file,size_tmp))
-#            except OSError, err:
-#                _logger.error("Cannot access file: %s " %(file))
-#    else:
-#        for file in filtered_list:
-#            try:
-#                fstat = os.stat(file)
-#                fsize = fstat.st_size
-#                if fsize < size_int:
-#                    _logger.debug("File: %s is smaller than size: %s " %(file,size_tmp))
-#                    target_files.append(file)
-#                else:
-#                    _logger.debug("File: %s is larger than size: %s " %(file,size_tmp))
-#            except OSError, err:
-#                _logger.error("Cannot access file: %s " %(file))
-#
+    if afr_check in age:
+        age_check = '>' 
+        age_int = age.strip("+")
+        threshold = 'after'
+    else:
+        age_check = '<' 
+        age_int = age.strip("-")
+        threshold = 'before'
+
+    time_tag = age.lower()[-1:]
+
+    sec_tag = 's'
+    min_tag = 'm'
+    hrs_tag = 'h'
+    day_tag = 'd'
+
+    age_tmp = age_int.lower()
+
+    if sec_tag in time_tag:
+        age_int = int(age_tmp.strip("s"))
+        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+    elif min_tag in time_tag:
+        age_int = int(age_tmp.strip("m")) * 60
+        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+    elif hrs_tag in time_tag:
+        age_int = int(age_tmp.strip("h")) * 60 * 60
+        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+    else:
+        age_int = int(age_tmp.strip("d")) * 60 * 60 * 24
+        _logger.info("Checking file ages older than... %s seconds" %(age_int))
+   
+    _logger.debug("Age tag: %s age_check: %s age_int: %s " 
+        %(time_tag, age_check, age_int))
+
+    #_logger.info("Checking file ages ...")
+
+    target_files = []
+
+    filtered_list = []
+    filtered_list = list(filtered_files)
+
+    filtered_list.sort() 
+
+    if age_check == '>':
+        for file in filtered_list:
+            try:
+                fstat = os.stat(file)
+                fmage = fstat.st_mtime
+                if fmage > age_int:
+                    _logger.debug("File: %s is older than: %s " %(file,age_tmp))
+                    target_files.append(file)
+                else:
+                    _logger.debug("File: %s is younger than: %s " %(file,age_tmp))
+            except OSError, err:
+                _logger.error("Cannot access file: %s " %(file))
+    else:
+        for file in filtered_list:
+            try:
+                fstat = os.stat(file)
+                fmage = fstat.st_mtime
+                if fmage < age_int:
+                    _logger.debug("File: %s is smaller than size: %s " %(file,age_tmp))
+                    target_files.append(file)
+                else:
+                    _logger.debug("File: %s is larger than size: %s " %(file,age_tmp))
+            except OSError, err:
+                _logger.error("Cannot access file: %s " %(file))
+
 #    if byte_tag == kb_tag:
 #        byte_size = size.strip
-#
-#    check_list = []
-#    target_list = list(set(target_files))
-#    target_list.sort()
-#    
-#    if len(target_list) > 0:
-#        for f in target_list:
-#            _logger.debug("File: %s is %s the threshold of size: %s " %(f,threshold,size_tmp))
-#        _logger.info("%s files are %s the threshold of size: %s " %(len(target_list),threshold,size_tmp))
-#
-#    return target_list
-#            
+
+    check_list = []
+    target_list = list(set(target_files))
+    target_list.sort()
+    
+    if len(target_list) > 0:
+        for f in target_list:
+            _logger.debug("File: %s is %s the threshold of age: %s " %(f,threshold,age_tmp))
+        _logger.info("%s files are %s the threshold of age: %s " %(len(target_list),threshold,age_tmp))
+
+    return target_list
+
 ###
 ### Main check Function:
 ###
@@ -504,7 +516,8 @@ if __name__ == "__main__":
     else: 
         _include_dirs = None
     if options.mtime:
-        _check_time = [f.strip() for f in options.mtime.split(',')]
+        #_check_time = [f.strip() for f in options.mtime.split(',')]
+        _check_time = options.mtime
     else:
         _check_time = None
     if options.size:
