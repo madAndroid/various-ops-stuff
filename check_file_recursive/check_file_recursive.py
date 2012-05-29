@@ -21,10 +21,15 @@ from subprocess import Popen, PIPE, call
     :change: B{0.0.1} - 2012-05-21
     - Checking list of files by name, with filters on file and directory names
     """
-
 __author__ = "Andrew Stangl"
 __date__ = "2012-05-15"
 __version__ = "0.0.1"
+
+# Exit statuses recognized by Nagios
+UNKNOWN = -1
+OK = 0
+WARNING = 1
+CRITICAL = 2
 
 LOG_LEVEL = 20
 logging.basicConfig(
@@ -141,7 +146,8 @@ def include_files(all_files, inc_files):
                 inc_list2.append(fn)
         inc_list = set(inc_list1) & set(inc_list2) 
     else: 
-        print "only two search terms allowed"
+        _logger.error("Only two inclusions allowed!")
+        sys.exit(1)
 
     final_list = list(inc_list)
     return final_list
@@ -166,7 +172,8 @@ def exclude_files(all_files, exc_files):
                 exc_list2.append(fn)
         exc_list = set(exc_list1) | set(exc_list2) 
     else:
-        print "only two search terms allowed"
+        _logger.error("Only two exclusions allowed!")
+        sys.exit(1)
 
     final_list =  list(set(exc_list))
     return final_list
@@ -193,7 +200,8 @@ def include_dirs(all_dirs, inc_dirs):
                 inc_list2.append(dn)
         inc_list = set(inc_list1) & set(inc_list2) 
     else: 
-        print "only two search terms allowed"
+        _logger.error("Only two inclusions allowed!")
+        sys.exit(1)
 
     final_list = list(inc_list)
     return final_list
@@ -218,7 +226,8 @@ def exclude_dirs(all_dirs, exc_dirs):
                 exc_list2.append(dn)
         exc_list = set(exc_list1) | set(exc_list2) 
     else:
-        print "only two search terms allowed"
+        _logger.error("Only two exclusions allowed!")
+        sys.exit(1)
 
     final_list =  list(exc_list)
     return final_list
@@ -285,9 +294,6 @@ def check_file_size(filtered_files, size):
             except OSError, err:
                 _logger.error("Cannot access file: %s " %(file))
 
-    if byte_tag == kb_tag:
-        byte_size = size.strip
-
     check_list = []
     target_list = list(set(target_files))
     target_list.sort()
@@ -301,6 +307,7 @@ def check_file_size(filtered_files, size):
 
 ## File Age Operations:
 def check_file_age(filtered_files, age):
+
     afr_check = '+'
     bfr_check = '-'
 
@@ -340,7 +347,7 @@ def check_file_age(filtered_files, age):
     _logger.debug("Age tag: %s age_check: %s age_int: %s " 
         %(time_tag, age_check, age_int))
 
-    #_logger.info("Checking file ages ...")
+    _logger.info("Checking file ages ...")
 
     target_files = []
 
@@ -355,7 +362,7 @@ def check_file_age(filtered_files, age):
                 fstat = os.stat(file)
                 fmtime = fstat.st_mtime
                 fmage = time.time() - fmtime
-                #_logger.info("Current file: %s was modified %s ago" %(file, convert_seconds(fmage)))
+                _logger.debug("Current file: %s was modified %s ago" %(file, convert_seconds(fmage)))
                 if fmage > age_int:
                     _logger.debug("File: %s is older than: %s " %(file,age_tmp))
                     target_files.append(file)
@@ -369,17 +376,14 @@ def check_file_age(filtered_files, age):
                 fstat = os.stat(file)
                 fmtime = fstat.st_mtime
                 fmage = time.time() - fmtime
-                #_logger.info("Current file: %s was modified %s ago" %(file, convert_seconds(fmage)))
+                _logger.debug("Current file: %s was modified %s ago" %(file, convert_seconds(fmage)))
                 if fmage < age_int:
-                    _logger.debug("File: %s is smaller than size: %s " %(file,age_tmp))
+                    _logger.debug("File: %s is younger than: %s " %(file,age_tmp))
                     target_files.append(file)
                 else:
-                    _logger.debug("File: %s is larger than size: %s " %(file,age_tmp))
+                    _logger.debug("File: %s is older than: %s " %(file,age_tmp))
             except OSError, err:
                 _logger.error("Cannot access file: %s " %(file))
-
-#    if byte_tag == kb_tag:
-#        byte_size = size.strip
 
     check_list = []
     target_list = list(set(target_files))
@@ -392,11 +396,39 @@ def check_file_age(filtered_files, age):
 
     return target_list
 
+def check_if_empty(path):
+
+    file_list = []
+    dir_list = []
+    abs_path_list = []
+    tmp_list = []
+
+    for root, dirs, files in os.walk(path):
+        for subdir in dirs:
+            dir_list.append(os.path.join(root, subdir))
+        for filename in files:
+            abs_path_list.append(os.path.join(root, filename))
+            file_list.append(filename)
+
+    print file_list
+
+    if not file_list:
+        _logger.debug("Directory is empty")
+        print 'OK - Directory %s is empty' %(path)
+        raise SystemExit, OK
+    else:
+        _logger.debug("Directory is not empty!!")
+        print 'CRITICAL - Directory %s is not empty!!' %(path)
+        raise SystemExit, CRITICAL
+
 ###
 ### Main check Function:
 ###
 
-def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_dirs):
+def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_dirs, empty_dir=False):
+
+    if empty_dir:
+        check_if_empty(path)
 
     (file_list, file_list_abs, dir_list) = find_all_files(path)
 
@@ -416,15 +448,10 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     for f in final_check_list:
         _logger.info("'%s' found", f)
     _logger.info("'%s' Files found", num_items)
-
-#    if check_time is not None:
-#        check_file_age(ready_list, check_time)
-#    else:
-#        ready_list.sort()
-#        num_items = len(ready_list)
-#        for f in ready_list:
-#            _logger.info("'%s' found", f)
-#        _logger.info("'%s' Files found", num_items)
+    
+    if final_check_list:
+        _logger.error("One or more checks failed")
+        raise SystemExit, CRITICAL
 
 
 ### Helpers:
@@ -501,8 +528,8 @@ if __name__ == "__main__":
         help="last modified time\n")
     parser.add_option("-s", "--size",
         help="file size to check against\n")
-    parser.add_option("-d", "--dir_empty",
-        help="last modified time\n")
+    parser.add_option("-d", "--empty-dir", action="store_true",
+        help="Check if directory specified is empty\n")
     parser.set_defaults(log_level=str(LOG_LEVEL))
 
     (options, args) = parser.parse_args()
@@ -511,15 +538,14 @@ if __name__ == "__main__":
 
     if not options.path:
         parser.error("\tThe -p (--path) option is required\n")
-
     if not os.path.exists(options.path):
         parser.error("Check path: '%s' does not exist" % options.path)
 
-    if not options.size and not options.mtime:
-        parser.error("\n\tNo attribute specified - we need something to check - mtime or size is required\n")
+    if not options.size and not options.mtime and not options.empty_dir:
+        parser.error("\n\tNo attribute specified - we need something to check - time / size / emptydir\n")
 
-    if options.mtime and options.size:
-        parser.error("\n\tUnfortunately you can't check both size and time at once (just yet)\n")
+#    if options.mtime and options.size:
+#        parser.error("\n\tUnfortunately you can't check both size and time at once (just yet)\n")
 
     if options.exclude_files:
         _exclude_files = [f.strip() for f in options.exclude_files.split(',')]
@@ -538,7 +564,6 @@ if __name__ == "__main__":
     else: 
         _include_dirs = None
     if options.mtime:
-        #_check_time = [f.strip() for f in options.mtime.split(',')]
         _check_time = options.mtime
     else:
         _check_time = None
@@ -546,6 +571,10 @@ if __name__ == "__main__":
         _check_size = options.size
     else:
         _check_size = None
+    if options.empty_dir:
+        _empty_dir = True
+    else:
+        _empty_dir = False
 
-    run_check(options.path, _check_size, _check_time, _include_files, _exclude_files, _include_dirs, _exclude_dirs)
+    run_check(options.path, _check_size, _check_time, _include_files, _exclude_files, _include_dirs, _exclude_dirs, _empty_dir)
 
