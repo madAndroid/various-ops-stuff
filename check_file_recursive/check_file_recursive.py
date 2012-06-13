@@ -410,16 +410,14 @@ def check_if_empty(path):
             abs_path_list.append(os.path.join(root, filename))
             file_list.append(filename)
 
-    print file_list
-
-    if not file_list:
+    if file_list:
+        _logger.debug("Directory is not empty!!")
+        print 'CRITICAL - Directory %s is not empty!! - %s' %(path, file_list)
+        raise SystemExit, CRITICAL
+    else:
         _logger.debug("Directory is empty")
         print 'OK - Directory %s is empty' %(path)
         raise SystemExit, OK
-    else:
-        _logger.debug("Directory is not empty!!")
-        print 'CRITICAL - Directory %s is not empty!!' %(path)
-        raise SystemExit, CRITICAL
 
 ###
 ### Main check Function:
@@ -437,7 +435,7 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     if check_size and check_time is not None:
         file_size_list = check_file_size(ready_list, check_size)
         file_age_list = check_file_age(ready_list, check_time)
-        final_check_list = set(final_size_list) & set (file_age_list)
+        final_check_list = set(file_size_list) & set (file_age_list)
     elif check_size is not None:
         final_check_list = check_file_size(ready_list, check_size)
     else:
@@ -450,8 +448,13 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     _logger.info("'%s' Files found", num_items)
     
     if final_check_list:
-        _logger.error("One or more checks failed")
+        _logger.debug("One or more checks failed!")
+        print 'CRITICAL - One or more checks failed !! - %s files outside of threshold: %s' %(num_items,final_check_list)
         raise SystemExit, CRITICAL
+    else: 
+        _logger.debug("All checks passed")
+        print 'OK - all checks passed' 
+        raise SystemExit, OK
 
 
 ### Helpers:
