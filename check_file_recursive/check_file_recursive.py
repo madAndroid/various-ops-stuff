@@ -239,16 +239,24 @@ def check_file_size(filtered_files, size):
     
     pos_check = '+'
     neg_check = '-'
+
     if pos_check in size:
         size_check = '>' 
         size_int = size.strip("+")
         threshold = 'above'
-    else:
+    elif neg_check in size:
         size_check = '<' 
         size_int = size.strip("-")
         threshold = 'below'
+    else:
+        _logger.error("no modifier supplied - need to specify '+' or '-' ")
+        sys.exit(1)
 
-    byte_tag = size.lower()[-1:]
+    if size_int.isdigit():
+        byte_tag = 'k'
+    else:
+        byte_tag = size.lower()[-1:]
+
     mb_tag = 'm'
     kb_tag = 'k'
     size_tmp = size_int.lower()
@@ -260,7 +268,7 @@ def check_file_size(filtered_files, size):
     _logger.debug("Byte tag: %s size_check: %s size_int: %s " 
         %(byte_tag, size_check, size_int))
 
-    _logger.info("Checking sizes ...")
+    _logger.debug("Checking sizes ...")
 
     target_files = []
 
@@ -316,13 +324,19 @@ def check_file_age(filtered_files, age):
         age_int = age.strip("+")
         threshold = 'after'
         age_ident = 'older'
-    else:
+    elif bfr_check in age:
         age_check = '<' 
         age_int = age.strip("-")
         threshold = 'before'
         age_ident = 'younger'
+    else:
+        _logger.error("no modifier supplied - need to specify '+' or '-' ")
+        sys.exit(1)
 
-    time_tag = age.lower()[-1:]
+    if age_int.isdigit():
+        time_tag = 's'
+    else:
+        time_tag = age.lower()[-1:]
 
     sec_tag = 's'
     min_tag = 'm'
@@ -333,21 +347,21 @@ def check_file_age(filtered_files, age):
 
     if sec_tag in time_tag:
         age_int = int(age_tmp.strip("s"))
-        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
+        _logger.debug("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
     elif min_tag in time_tag:
         age_int = int(age_tmp.strip("m")) * 60
-        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
+        _logger.debug("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
     elif hrs_tag in time_tag:
         age_int = int(age_tmp.strip("h")) * 60 * 60
-        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
+        _logger.debug("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
     else:
         age_int = int(age_tmp.strip("d")) * 60 * 60 * 24
-        _logger.info("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
+        _logger.debug("Checking file ages %s than... %s " %(age_ident, convert_seconds(age_int)))
    
     _logger.debug("Age tag: %s age_check: %s age_int: %s " 
         %(time_tag, age_check, age_int))
 
-    _logger.info("Checking file ages ...")
+    _logger.debug("Checking file ages ...")
 
     target_files = []
 
@@ -435,17 +449,18 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     if check_size and check_time is not None:
         file_size_list = check_file_size(ready_list, check_size)
         file_age_list = check_file_age(ready_list, check_time)
-        final_check_list = set(file_size_list) & set (file_age_list)
+        final_check_list = set(file_size_list) & set(file_age_list)
     elif check_size is not None:
         final_check_list = check_file_size(ready_list, check_size)
     else:
         final_check_list = check_file_age(ready_list, check_time)
 
+    final_check_list = list(final_check_list)
     final_check_list.sort()
     num_items = len(final_check_list)
     for f in final_check_list:
-        _logger.info("'%s' found", f)
-    _logger.info("'%s' Files found", num_items)
+        _logger.debug("'%s' found", f)
+    _logger.debug("'%s' Files found", num_items)
     
     if final_check_list:
         _logger.debug("One or more checks failed!")
@@ -546,9 +561,6 @@ if __name__ == "__main__":
 
     if not options.size and not options.mtime and not options.empty_dir:
         parser.error("\n\tNo attribute specified - we need something to check - time / size / emptydir\n")
-
-#    if options.mtime and options.size:
-#        parser.error("\n\tUnfortunately you can't check both size and time at once (just yet)\n")
 
     if options.exclude_files:
         _exclude_files = [f.strip() for f in options.exclude_files.split(',')]
