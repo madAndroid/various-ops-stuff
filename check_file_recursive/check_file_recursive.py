@@ -442,9 +442,11 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     if empty_dir:
         check_if_empty(path)
 
-    (file_list, file_list_abs, dir_list) = find_all_files(path)
-
-    ready_list = set(filter_files(file_list_abs, dir_list, inc_files, exc_files, inc_dirs, exc_dirs))
+    if os.path.isfile(path):
+        ready_list = [path,] 
+    else:
+        (file_list, file_list_abs, dir_list) = find_all_files(path)
+        ready_list = set(filter_files(file_list_abs, dir_list, inc_files, exc_files, inc_dirs, exc_dirs))
 
     if check_size and check_time is not None:
         file_size_list = check_file_size(ready_list, check_size)
@@ -464,7 +466,7 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     
     if final_check_list:
         _logger.debug("One or more checks failed!")
-        print 'CRITICAL - One or more checks failed !! - %s files outside of threshold: %s' %(num_items,final_check_list)
+        print 'CRITICAL - One or more checks failed !! - %s file(s) outside of threshold: %s' %(num_items,final_check_list)
         raise SystemExit, CRITICAL
     else: 
         _logger.debug("All checks passed")
