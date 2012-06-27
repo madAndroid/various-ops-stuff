@@ -437,7 +437,7 @@ def check_if_empty(path):
 ### Main check Function:
 ###
 
-def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_dirs, empty_dir=False):
+def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_dirs, empty_dir=False, reverse_check=False):
 
     if empty_dir:
         check_if_empty(path)
@@ -463,6 +463,16 @@ def run_check(path, check_size, check_time, inc_files, exc_files, inc_dirs, exc_
     for f in final_check_list:
         _logger.debug("'%s' found", f)
     _logger.debug("'%s' Files found", num_items)
+
+    if reverse_check:
+        if final_check_list:
+            _logger.debug("All checks passed")
+            print 'OK - all checks passed' 
+            raise SystemExit, OK
+        else: 
+            _logger.debug("One or more checks failed!")
+            print 'CRITICAL - One or more checks failed !! - No file(s) within threshold' %(num_items)
+            raise SystemExit, CRITICAL
     
     if final_check_list:
         _logger.debug("One or more checks failed!")
@@ -550,6 +560,9 @@ if __name__ == "__main__":
         help="file size to check against\n")
     parser.add_option("-d", "--empty-dir", action="store_true",
         help="Check if directory specified is empty\n")
+    parser.add_option("-r", "--reverse_check", action="store_true",
+        help="Reverse logic of check, to check inverse of requirements\n")
+
     parser.set_defaults(log_level=str(LOG_LEVEL))
 
     (options, args) = parser.parse_args()
@@ -584,6 +597,11 @@ if __name__ == "__main__":
         _check_time = options.mtime
     else:
         _check_time = None
+    if options.reverse_check:
+        _reverse = True
+    else:
+        _reverse = False
+
     if options.size:
         _check_size = options.size
     else:
@@ -593,5 +611,5 @@ if __name__ == "__main__":
     else:
         _empty_dir = False
 
-    run_check(options.path, _check_size, _check_time, _include_files, _exclude_files, _include_dirs, _exclude_dirs, _empty_dir)
+    run_check(options.path, _check_size, _check_time, _include_files, _exclude_files, _include_dirs, _exclude_dirs, _empty_dir, _reverse)
 
