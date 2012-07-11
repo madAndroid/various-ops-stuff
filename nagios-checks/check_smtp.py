@@ -30,12 +30,12 @@ logging.basicConfig(
     level=LOG_LEVEL)
 _logger = logging.getLogger()
 
-def check_queue()
+def check_queue():
 
     mailq_files = []
     queue_list = []
 
-    if os.isfile('/usr/sbin/sendmail'):
+    if os.path.isfile('/usr/sbin/sendmail'):
         sendmail = True
         mailqdir = '/var/spool/mqueue/'
     else:
@@ -47,17 +47,22 @@ def check_queue()
             mailq_files.append(os.path.join(root, filename))
             queue_list.append(filename)
 
-    if queue_list:
-        _logger.debug("mailq is building up!!")
-        print 'CRITICAL - MailQ %s has %s messages in it!! - %s' %(mailqdir, len(queue_list))
-        raise SystemExit, CRITICAL
+    if queue_list: 
+        if len(queue_list) => 3:
+            _logger.debug("mailq is building up!!")
+            print 'WARNING - MailQ %s has %s messages in it!!' %(mailqdir, len(queue_list))
+            raise SystemExit, WARNING
+        elif len(queue_list > 3:
+            _logger.debug("mailq is building up!!")
+            print 'CRTICAL - MailQ %s has %s messages in it!!' %(mailqdir, len(queue_list))
+            raise SystemExit, CRITICAL
     else:
         _logger.debug("mailq is empty")
         print 'OK - MailQ %s is empty' %(mailqdir)
         raise SystemExit, OK
 
 
-def run_check(relayhost='localhost', username, password, port='25', testmsg, secure='False', queue='False'):
+def run_check(relayhost, username, password, port='25', secure='False', queue='False'):
 
     if queue:
         check_queue()
@@ -74,14 +79,14 @@ def run_check(relayhost='localhost', username, password, port='25', testmsg, sec
                 print 'OK - connection to SMTP server %s available' %(relayhost)
                 raise SystemExit, OK
 
-            except SMTPAuthenticationError:
+            except smtplib.SMTPAuthenticationError:
                 print 'Cannot authenticate to specified SMTP server!!'
                 raise SystemExit, CRITICAL
         else:
             print 'OK - connection to SMTP server %s available' %(relayhost)
             raise SystemExit, OK
 
-    except SMTPConnectError:
+    except smtplib.SMTPConnectError:
         print 'Cannot connect to specified SMTP server!!'
         raise SystemExit, CRITICAL
         
@@ -106,9 +111,9 @@ if __name__ == "__main__":
         help="password to use \n")
     parser.add_option("-a", "--alternate_port",
         help="alternative port number (25 default) \n")
-    parser.add_option("-s," "--secure", action="store_true",
+    parser.add_option("-s", "--secure", action="store_false",
         help="use TLS/SSL to test connectivity\n")
-    parser.add_option("-q," "--queue", action="store_true",
+    parser.add_option("-q", "--queue", action="store_false",
         help="Check if mailq building up - SENDMAIL specific\n")
 
     parser.set_defaults(log_level=str(LOG_LEVEL), relayhost='localhost',
@@ -118,15 +123,5 @@ if __name__ == "__main__":
 
     _logger.setLevel(int(options.log_level))
 
-    if options.secure:
-        queue = True
-    else:
-        queue = False
-
-    if options.queue:
-        queue = True
-    else:
-        queue = False
-
-    run_check(relayhost, username, password, port, secure, queue)
+    run_check(options.relayhost, options.username, options.password, options.port, options.secure, options.queue)
 
