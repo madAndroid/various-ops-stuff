@@ -7,11 +7,86 @@ import logging
 
 from email.mime.text import MIMEText
 
-server = smtplib.SMTP(relay_host)
+""" Script to check SMTP access
 
+    :var LOG_LEVEL: This is the default logging level.  Here are suitable values:
+
+    """
+__author__ = "Andrew Stangl"
+__date__ = "2012-07-11"
+__version__ = "0.0.1"
+
+# Exit statuses recognized by Nagios
+UNKNOWN = -1
+OK = 0
+WARNING = 1
+CRITICAL = 2
+
+LOG_LEVEL = 20
+logging.basicConfig(
+    format="%(asctime)s (%(filename)s, %(funcName)s, %(lineno)d) "
+    "[%(levelname)8s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=LOG_LEVEL)
+_logger = logging.getLogger()
+
+def check_queue()
+
+    mailq_files = []
+    queue_list = []
+
+    if os.isfile('/usr/sbin/sendmail'):
+        sendmail = True
+        mailqdir = '/var/spool/mqueue/'
+    else:
+        _logger.error("MTA is not sendmail compatible, exiting...")
+        raise SystemExit, UNKNOWN
+
+    for root, dirs, files in os.walk(mailqdir):
+        for filename in files:
+            mailq_files.append(os.path.join(root, filename))
+            queue_list.append(filename)
+
+    if queue_list:
+        _logger.debug("mailq is building up!!")
+        print 'CRITICAL - MailQ %s has %s messages in it!! - %s' %(mailqdir, len(queue_list))
+        raise SystemExit, CRITICAL
+    else:
+        _logger.debug("mailq is empty")
+        print 'OK - MailQ %s is empty' %(mailqdir)
+        raise SystemExit, OK
+
+
+def run_check(relayhost='localhost', username, password, port='25', testmsg, secure='False', queue='False'):
+
+    if queue:
+        check_queue()
+
+    ## establish connection
+    try:
+        server = smtplib.SMTP(relayhost, port)
+        server.set_debuglevel('True')
+        _logger.debug("Connection active: ")
+
+        if username and password:
+            try:
+                server.login(username,password)
+                print 'OK - connection to SMTP server %s available' %(relayhost)
+                raise SystemExit, OK
+
+            except SMTPAuthenticationError:
+                print 'Cannot authenticate to specified SMTP server!!'
+                raise SystemExit, CRITICAL
+        else:
+            print 'OK - connection to SMTP server %s available' %(relayhost)
+            raise SystemExit, OK
+
+    except SMTPConnectError:
+        print 'Cannot connect to specified SMTP server!!'
+        raise SystemExit, CRITICAL
+        
 
 ### MAIN:
-
 if __name__ == "__main__":
     import optparse
     parser = optparse.OptionParser(
@@ -31,58 +106,27 @@ if __name__ == "__main__":
         help="password to use \n")
     parser.add_option("-a", "--alternate_port",
         help="alternative port number (25 default) \n")
-    parser.add_option("-t," "--test_message",
-        help="a directory pattern to include (string only - no regex)\n")
-    parser.add_option("-s," "--secure",
+    parser.add_option("-s," "--secure", action="store_true",
         help="use TLS/SSL to test connectivity\n")
+    parser.add_option("-q," "--queue", action="store_true",
+        help="Check if mailq building up - SENDMAIL specific\n")
 
-    parser.set_defaults(log_level=str(LOG_LEVEL))
+    parser.set_defaults(log_level=str(LOG_LEVEL), relayhost='localhost',
+        port='25', secure='False', queue='False')
 
     (options, args) = parser.parse_args()
 
     _logger.setLevel(int(options.log_level))
 
-    if not options.relayhost:
-        parser.error("\tThe -p (--path) option is required\n")
-    if not os.path.exists(options.path):
-        parser.error("Check path: '%s' does not exist" % options.path)
-
-    if not options.size and not options.mtime and not options.empty_dir:
-        parser.error("\n\tNo attribute specified - we need something to check - time / size / emptydir\n")
-
-    if options.exclude_files:
-        _exclude_files = [f.strip() for f in options.exclude_files.split(',')]
-    else: 
-        _exclude_files = None
-    if options.include_files:
-        _include_files = [f.strip() for f in options.include_files.split(',')]
-    else: 
-        _include_files = None
-    if options.exclude_dirs:
-        _exclude_dirs = [f.strip() for f in options.exclude_dirs.split(',')]
-    else: 
-        _exclude_dirs = None
-    if options.include_dirs:
-        _include_dirs = [f.strip() for f in options.include_dirs.split(',')]
-    else: 
-        _include_dirs = None
-    if options.mtime:
-        _check_time = options.mtime
+    if options.secure:
+        queue = True
     else:
-        _check_time = None
-    if options.reverse_check:
-        _reverse = True
-    else:
-        _reverse = False
+        queue = False
 
-    if options.size:
-        _check_size = options.size
+    if options.queue:
+        queue = True
     else:
-        _check_size = None
-    if options.empty_dir:
-        _empty_dir = True
-    else:
-        _empty_dir = False
+        queue = False
 
-    run_check(options.path, _check_size, _check_time, _include_files, _exclude_files, _include_dirs, _exclude_dirs, _empty_dir, _reverse)
+    run_check(relayhost, username, password, port, secure, queue)
 
