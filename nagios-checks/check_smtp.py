@@ -48,11 +48,11 @@ def check_queue():
             queue_list.append(filename)
 
     if queue_list: 
-        if len(queue_list) => 3:
+        if len(queue_list) <= 3:
             _logger.debug("mailq is building up!!")
             print 'WARNING - MailQ %s has %s messages in it!!' %(mailqdir, len(queue_list))
             raise SystemExit, WARNING
-        elif len(queue_list > 3:
+        elif len(queue_list) > 3:
             _logger.debug("mailq is building up!!")
             print 'CRTICAL - MailQ %s has %s messages in it!!' %(mailqdir, len(queue_list))
             raise SystemExit, CRITICAL
@@ -116,8 +116,7 @@ if __name__ == "__main__":
     parser.add_option("-q", "--queue", action="store_false",
         help="Check if mailq building up - SENDMAIL specific\n")
 
-    parser.set_defaults(log_level=str(LOG_LEVEL), relayhost='localhost',
-        port='25', secure='False', queue='False')
+    parser.set_defaults(log_level=str(LOG_LEVEL), relayhost='localhost', port='25')
 
     (options, args) = parser.parse_args()
 
