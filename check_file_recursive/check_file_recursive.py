@@ -262,8 +262,10 @@ def check_file_size(filtered_files, size):
     size_tmp = size_int.lower()
     if mb_tag in byte_tag:
         size_int = int(size_tmp.strip("m")) * 1024 * 1024
-    else:
+    elif kb_tag in byte_tag:
         size_int = int(size_tmp.strip("k")) * 1024
+    else:
+        size_int = int(size_tmp.strip("k"))
     
     _logger.debug("Byte tag: %s size_check: %s size_int: %s " 
         %(byte_tag, size_check, size_int))
