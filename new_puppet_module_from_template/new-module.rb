@@ -4,16 +4,24 @@ require 'erb'
 require 'fileutils'
 require 'pp'
 
-module_name = ARGV[0]
+module_path = ARGV[0]
+module_name = File.basename(ARGV[0])
 
 dirnames = [ "templates", "manifests", "files" ]
 
 dirnames.each { |dir|
-  FileUtils.mkdir_p(File.join(Dir.pwd, module_name, dir))
+  FileUtils.mkdir_p(File.join(Dir.pwd, module_path, dir))
 }
 
 template = "
-class <%= module_name %>::install {
+class <%= module_name %>::params {
+
+
+}
+
+class <%= module_name %>::install (
+
+    ) inherits <%= module_name %>::params {
 
     # Defaults for all packages:
     Package {
@@ -24,7 +32,9 @@ class <%= module_name %>::install {
 
 }
 
-class <%= module_name %>::service {
+class <%= module_name %>::service (
+
+    ) inherits <%= module_name %>::params {
 
     # Defaults for all services:
     Service {
@@ -37,7 +47,9 @@ class <%= module_name %>::service {
 
 }
 
-class <%= module_name %>::config {
+class <%= module_name %>::config (
+
+    ) inherits <%= module_name %>::params {
 
     # Defaults for all files in here:
     File { 
@@ -60,15 +72,23 @@ class <%= module_name %>::config {
 # Description of <%= module_name %>
 #
 
-class <%= module_name %> {
+class <%= module_name %> (
 
-    include <%= module_name %>::install, <%= module_name %>::config, <%= module_name %>::service
+    ) inherits <%= module_name %>::params {
+
+    include <%= module_name %>::install
+
+    class <%= module_name %>::config {
+
+    }
+
+    include <%= module_name %>::service
 
 }
 "
 
 renderer = ERB.new(template)
-File.open(File.join(Dir.pwd, module_name, "manifests", "init.pp"),'w' ) { |f|
+File.open(File.join(Dir.pwd, module_path, "manifests", "init.pp"),'w' ) { |f|
   f.write(renderer.result())
 }
 
