@@ -24,7 +24,7 @@ class <%= module_name %>::install (
 
     # Defaults for all packages:
     Package {
-        ensure => installed
+        ensure      => installed
     }
 
     # Specific packages:
@@ -37,9 +37,9 @@ class <%= module_name %>::service (
 
     # Defaults for all services:
     Service {
-        require => Class[<%= module_name %>::config],
-        ensure  => running,
-        enable  => true
+        require     => Class [ '<%= module_name %>::config' ],
+        ensure      => running,
+        enable      => true
     }
 
     # Specific services:
@@ -52,11 +52,11 @@ class <%= module_name %>::config (
 
     # Defaults for all files in here:
     File { 
-        require => Class[<%= module_name %>::install],
-        notify  => Class[<%= module_name %>::service],
-        owner   => root,
-        group   => root,
-        mode    => 644
+        require     => Class [ '<%= module_name %>::install' ],
+        notify      => Class [ '<%= module_name %>::service' ],
+        owner       => root,
+        group       => root,
+        mode        => 644
     }
 
     # Specific files
