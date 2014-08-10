@@ -10,8 +10,7 @@ echo "Turning swap off"
 sudo swapon -s
 sudo swapoff -a &
 while [ $(free | grep -i swap | awk '{print $3}') -gt 0 ]; do
-    sleep 1
-    free -m
+    free -m | grep -i swap; printf "\033[A"
 done
 echo "Turning swap back on"
 sudo swapon -s
