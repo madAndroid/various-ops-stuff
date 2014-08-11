@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Redirect output to stderr.
+exec 1>&2
+
+git diff-index --name-only HEAD | xargs grep -q '@current'
+
+if [ $? == 0 ]; then
+    echo
+    echo "WARNING: Changes show features tagged as @current:"
+    git diff-index --name-only HEAD | xargs grep -Hl '@current' | sed 's/^/    /g'
+    echo
+fi
+
+find . -name '*.pp' -type f -path ./tasks -prune | xargs puppet parser validate {} \;
+
+# If there are whitespace errors, print the offending file names and fail.
+#exec git diff-index --check --cached $against --
