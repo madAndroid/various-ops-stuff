@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Redirect output to stderr.
+exec 1>&2
+
+REPO_NAME=$(git config --get remote.origin.url | cut -d: -f 2)
+COMMIT_MSG=$(git log --pretty=oneline --abbrev-commit |head -n 1)
+
+idonethis "$REPO_NAME -- $COMMIT_MSG"
